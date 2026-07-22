@@ -192,8 +192,8 @@ svg text{fill:var(--muted);font-size:9px;font-family:var(--mono);}
    user's browser, so anything placed here is visible to anyone who views
    the page source. NEVER put your "service_role" secret key here; that
    key bypasses Row Level Security and must only ever live on a server. */
-const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';       // e.g. https://xxxxxxxx.supabase.co
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_PUBLIC_KEY';
+const SUPABASE_URL = 'https://hhzcvtdeyjhqiuvhlszv.supabase.co';       // e.g. https://xxxxxxxx.supabase.co
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhoemN2dGRleWpocWl1dmhsc3p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MDMwMTEsImV4cCI6MjEwMDI3OTAxMX0.D98dXU95-YZ3G6QrTmUumXZzyls5kYYMObm0EfCL5EM';
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
