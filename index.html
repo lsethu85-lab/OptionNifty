@@ -1,0 +1,2298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIFTY / BANKNIFTY Options Terminal</title>
+<style>
+:root{
+  --bg:#0a0e14; --panel:#10161f; --panel2:#151d29; --border:#232d3b;
+  --text:#e6edf3; --muted:#8b98a9; --accent:#3ea6ff; --accent2:#7c5cff;
+  --green:#22c55e; --red:#ef4444; --amber:#f59e0b; --teal:#14b8a6;
+  --radius:10px; --mono:'SF Mono',Consolas,'Courier New',monospace;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:13px;}
+#app{display:flex;min-height:100vh;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:#2a3547;border-radius:4px;}
+
+/* Sidebar */
+#sidebar{width:216px;background:var(--panel);border-right:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.brand{padding:16px 14px;border-bottom:1px solid var(--border);}
+.brand b{font-size:14px;letter-spacing:.5px;}
+.brand span{display:block;color:var(--muted);font-size:10px;margin-top:2px;}
+.navlist{list-style:none;margin:0;padding:8px;flex:1;}
+.navlist li{padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:2px;font-size:12.5px;user-select:none;}
+.navlist li:hover{background:var(--panel2);color:var(--text);}
+.navlist li.active{background:linear-gradient(90deg,rgba(62,166,255,.15),transparent);color:var(--accent);border-left:2px solid var(--accent);padding-left:10px;}
+.navlist .icon{width:16px;text-align:center;}
+.sidefoot{padding:10px 14px;border-top:1px solid var(--border);color:var(--muted);font-size:10.5px;line-height:1.5;}
+
+/* Main */
+#main{flex:1;display:flex;flex-direction:column;min-width:0;}
+#topbar{background:var(--panel);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.symsel{display:flex;gap:6px;}
+.symbtn{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;}
+.symbtn.active{background:rgba(62,166,255,.15);color:var(--accent);border-color:var(--accent);}
+.spotbox{font-family:var(--mono);font-size:16px;font-weight:700;}
+.chg-up{color:var(--green);} .chg-down{color:var(--red);}
+.badge{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.4px;}
+.badge-sim{background:rgba(245,158,11,.15);color:var(--amber);border:1px solid rgba(245,158,11,.3);}
+.badge-broker{background:rgba(59,130,246,.15);color:#3b82f6;border:1px solid rgba(59,130,246,.3);}
+.badge-live{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.spacer{flex:1;}
+.clock{font-family:var(--mono);color:var(--muted);font-size:11.5px;}
+#tabContent{padding:18px;overflow-y:auto;}
+.disclaimer{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);color:#e8c893;padding:8px 14px;font-size:11px;border-radius:8px;margin:0 18px 12px 18px;line-height:1.5;}
+
+/* Grid & cards */
+.grid{display:grid;gap:12px;}
+.g4{grid-template-columns:repeat(4,1fr);} .g3{grid-template-columns:repeat(3,1fr);}
+.g2{grid-template-columns:repeat(2,1fr);}
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr);}.g3{grid-template-columns:repeat(2,1fr);}}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+.card h3{margin:0 0 10px 0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
+.kpi{font-size:22px;font-weight:700;font-family:var(--mono);}
+.kpi-sub{color:var(--muted);font-size:11px;margin-top:4px;}
+.section-title{font-size:15px;font-weight:700;margin:20px 0 10px 0;display:flex;align-items:center;gap:8px;}
+.section-title:first-child{margin-top:0;}
+
+table{width:100%;border-collapse:collapse;font-size:11.5px;}
+th{color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;}
+td{padding:6px 8px;border-bottom:1px solid #182130;text-align:right;font-family:var(--mono);white-space:nowrap;}
+tr.atm{background:rgba(62,166,255,.08);}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.pill-buy{background:rgba(34,197,94,.15);color:var(--green);}
+.pill-sell{background:rgba(239,68,68,.15);color:var(--red);}
+.pill-wait{background:rgba(245,158,11,.15);color:var(--amber);}
+.pill-neutral{background:rgba(139,152,169,.15);color:var(--muted);}
+
+.scorebar{height:8px;background:#1c2431;border-radius:6px;overflow:hidden;margin-top:6px;}
+.scorebar i{display:block;height:100%;background:linear-gradient(90deg,var(--red),var(--amber),var(--green));}
+.tag{background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-size:10.5px;padding:3px 8px;border-radius:6px;display:inline-block;margin:2px 4px 2px 0;}
+.reason{padding:6px 10px;background:var(--panel2);border-left:3px solid var(--accent);border-radius:4px;margin-bottom:6px;font-size:12px;}
+.btn{background:var(--accent);color:#031524;border:none;padding:7px 14px;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-danger{background:var(--red);color:#fff;}
+.chart-icon-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:12px;margin-left:6px;opacity:.75;transition:opacity .15s;}
+.chart-icon-link:hover{opacity:1;}
+input,select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:6px 9px;border-radius:6px;font-size:12px;}
+.flexrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.heat{width:100%;height:26px;border-radius:5px;display:flex;overflow:hidden;}
+.heatcell{flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#031524;}
+.big-action{font-size:26px;font-weight:800;letter-spacing:.5px;}
+.muted{color:var(--muted);}
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.alertcard{border-left:3px solid var(--amber);background:var(--panel2);padding:8px 12px;border-radius:6px;margin-bottom:8px;font-size:12px;display:flex;justify-content:space-between;gap:10px;}
+.watchrow{display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid #182130;font-size:12px;}
+svg text{fill:var(--muted);font-size:9px;font-family:var(--mono);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="brand"><b>OPTIONS TERMINAL</b><span>NSE Index Options · Decision Support</span></div>
+    <ul class="navlist" id="navlist"></ul>
+    <div class="sidefoot">Educational tool. Probability-based analysis, not investment advice. Options trading involves substantial risk of loss.</div>
+  </div>
+  <div id="main">
+    <div id="topbar">
+      <div class="symsel" id="symsel"></div>
+      <div class="spotbox" id="spotbox">—</div>
+      <span class="badge" id="dataBadge">SIMULATED DATA</span>
+      <div class="spacer"></div>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+    <div class="disclaimer">⚠ Educational decision-support tool only — not investment advice. Recommendations are probability-weighted model outputs, not guarantees. Spot/history/VIX are pulled live from public feeds via a browser-side CORS proxy, and the option chain attempts a live NSE fetch (falling back to a real-spot/real-IV model when NSE blocks it) — current mode is badged above. Options trading can result in loss of the entire premium paid; size positions accordingly.</div>
+    <div id="tabContent"></div>
+  </div>
+</div>
+
+<script>
+/* =========================== CONFIG =========================== */
+const SYMBOLS = {
+  NIFTY:      {name:'NIFTY 50',      spot:24850, step:50,  lot:75,  atmIV:12.5},
+  BANKNIFTY:  {name:'BANK NIFTY',    spot:55200, step:100, lot:35,  atmIV:14.0},
+  FINNIFTY:   {name:'FIN NIFTY',     spot:23400, step:50,  lot:65,  atmIV:13.2},
+  MIDCPNIFTY: {name:'MIDCAP NIFTY',  spot:12650, step:25,  lot:140, atmIV:16.5},
+  SENSEX:     {name:'SENSEX',        spot:81200, step:100, lot:20,  atmIV:12.0},
+};
+const TABS = [
+  ['home','🏠','Home'],['market','📊','Live Market Overview'],
+  ['index_NIFTY','📈','NIFTY Dashboard'],['index_BANKNIFTY','🏦','BANKNIFTY Dashboard'],
+  ['chain','⛓','Option Chain'],['strikes','🎯','Smart Strike Selector'],
+  ['institutional','🏛','Institutional Flow'],['greeks','Δ','Greeks Dashboard'],
+  ['oi','📶','Open Interest Analytics'],['iv','🌊','IV Analytics'],
+  ['strategy','🧩','Strategy Builder'],['sandbox','🧪','Sandbox Trading'],
+  ['portfolio','💼','Portfolio'],
+  ['backtest','⏮','Backtesting'],['alerts','🔔','Alerts'],
+  ['watchlist','⭐','Watchlist'],['settings','⚙','Settings'],
+];
+
+/* =========================== LIVE DATA LAYER =========================== */
+/* Maps each tradable symbol to its underlying index ticker on Yahoo Finance,
+   used to pull real spot quotes and real daily OHLC history. */
+const YF_SYMBOL = {
+  NIFTY:      '%5ENSEI',
+  BANKNIFTY:  '%5ENSEBANK',
+  FINNIFTY:   'NIFTY_FIN_SERVICE.NS',
+  MIDCPNIFTY: 'NIFTY_MID_SELECT.NS',
+  SENSEX:     '%5EBSESN',
+};
+const VIX_YF_SYMBOL = '%5EINDIAVIX';
+/* TradingView ticker for each underlying index — used as a fallback chart
+   link when an exact option contract isn't known (e.g. no expiry on hand). */
+const TV_SYMBOL = {
+  NIFTY:      'NSE:NIFTY',
+  BANKNIFTY:  'NSE:BANKNIFTY',
+  FINNIFTY:   'NSE:CNXFINANCE',
+  MIDCPNIFTY: 'NSE:NIFTY_MID_SELECT',
+  SENSEX:     'BSE:SENSEX',
+};
+function tvChartUrl(sym){ return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(TV_SYMBOL[sym]||sym)}`; }
+/* TradingView supports deep-linking straight to an exact NSE option contract
+   using the documented ticker pattern EXCHANGE:ROOT + yymmdd + C/P + STRIKE
+   (e.g. NSE:NIFTY240314C22450 for the 14-Mar-24 22450 Call) — see
+   https://in.tradingview.com/support/solutions/43000480528. Reuses the same
+   NSE_CHAIN_SYMBOL root already used for the live option-chain fetch, and is
+   only available for NIFTY/BANKNIFTY/FINNIFTY/MIDCPNIFTY (SENSEX options
+   trade on BSE via a different naming scheme not covered by that doc, so it
+   falls back to the underlying index chart). */
+function tvOptionSymbol(sym, strike, type, expiryDate){
+  const root = NSE_CHAIN_SYMBOL[sym];
+  if(!root || !expiryDate || !strike || !type) return null;
+  const yy = String(expiryDate.getFullYear()).slice(-2);
+  const mm = String(expiryDate.getMonth()+1).padStart(2,'0');
+  const dd = String(expiryDate.getDate()).padStart(2,'0');
+  return `NSE:${root}${yy}${mm}${dd}${type==='CE'?'C':'P'}${strike}`;
+}
+function tvOptionChartUrl(sym, strike, type, expiryDate){
+  const optSym = tvOptionSymbol(sym, strike, type, expiryDate);
+  return optSym ? `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(optSym)}` : tvChartUrl(sym);
+}
+/* Chart icon: opens the exact strike/expiry contract on TradingView when
+   strike+type+expiryDate are supplied, else falls back to the underlying
+   index chart. Angel One itself has no public, shareable per-contract chart
+   URL — trade.angelone.in is a login-gated single-page app with no
+   documented deep-link scheme — so instead of a broken redirect we surface a
+   one-click "copy Angel One symbol" button using the same trading-symbol
+   convention already used elsewhere in this file (angelTradingSymbol), which
+   you can paste straight into the search box of your connected Angel One
+   terminal to pull up that exact contract's chart. */
+function chartIconLink(sym, opts){
+  const o = opts || {};
+  const hasExact = o.strike!=null && o.type && o.expiryDate;
+  const url = hasExact ? tvOptionChartUrl(sym, o.strike, o.type, o.expiryDate) : tvChartUrl(sym);
+  const title = hasExact
+    ? `View ${SYMBOLS[sym].name} ${o.strike}${o.type} (${o.expiryDate.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})}) chart on TradingView`
+    : `View ${SYMBOLS[sym].name} chart on TradingView`;
+  let html = `<a href="${url}" target="_blank" rel="noopener" class="chart-icon-link" title="${title}" onclick="event.stopPropagation()">📈</a>`;
+  if(hasExact && NSE_CHAIN_SYMBOL[sym]){
+    const angelSym = angelTradingSymbol(NSE_CHAIN_SYMBOL[sym], o.expiryDate, o.strike, o.type);
+    html += `<a href="javascript:void(0)" class="chart-icon-link" title="Copy Angel One trading symbol (${angelSym}) — paste into your Angel One app to open that exact chart" onclick="event.stopPropagation(); copyAngelSymbol(this,'${angelSym}')">🅰️</a>`;
+  }
+  return html;
+}
+function copyAngelSymbol(el, sym){
+  const original = el.textContent;
+  const flash = ()=>{ el.textContent='✓'; setTimeout(()=>{ el.textContent=original; }, 1200); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(sym).then(flash).catch(()=>{ window.prompt('Copy Angel One symbol:', sym); });
+  } else {
+    window.prompt('Copy Angel One symbol:', sym);
+  }
+}
+/* NSE's own option-chain symbol codes (used for the live chain attempt). SENSEX
+   options trade on BSE via a different API, so it is left out and always uses
+   the model-derived chain. */
+const NSE_CHAIN_SYMBOL = { NIFTY:'NIFTY', BANKNIFTY:'BANKNIFTY', FINNIFTY:'FINNIFTY', MIDCPNIFTY:'MIDCPNIFTY' };
+
+/* Public CORS proxies tried in order — no server-side component here, so a
+   browser-only client has to relay through one of these to reach Yahoo/NSE.
+   Any one going down just falls through to the next. */
+const CORS_PROXIES = [
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+];
+
+async function fetchJsonViaProxies(url, timeoutMs=9000){
+  for(const build of CORS_PROXIES){
+    try{
+      const controller = new AbortController();
+      const timer = setTimeout(()=>controller.abort(), timeoutMs);
+      const res = await fetch(build(url), {signal:controller.signal, headers:{'Accept':'application/json'}});
+      clearTimeout(timer);
+      if(!res.ok) continue;
+      const text = await res.text();
+      try{ return JSON.parse(text); }catch(e){ continue; } // proxy returned an HTML error page, try next
+    }catch(e){ /* timeout/network/CORS — try next proxy */ }
+  }
+  return null;
+}
+
+async function fetchYahooChart(ySymbol, range='1y', interval='1d'){
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?range=${range}&interval=${interval}`;
+  const data = await fetchJsonViaProxies(url);
+  const r = data?.chart?.result?.[0];
+  if(!r || !r.timestamp) return null;
+  const ts = r.timestamp, q = r.indicators.quote[0];
+  const bars = [];
+  for(let i=0;i<ts.length;i++){
+    if(q.open[i]==null || q.close[i]==null || q.high[i]==null || q.low[i]==null) continue;
+    bars.push({t:bars.length, time:ts[i]*1000, o:q.open[i], h:q.high[i], l:q.low[i], c:q.close[i], v:q.volume[i]||0});
+  }
+  if(bars.length<2) return null;
+  return { bars, meta:r.meta };
+}
+
+async function fetchNseOptionChain(sym){
+  const nseSym = NSE_CHAIN_SYMBOL[sym];
+  if(!nseSym) return null;
+  const url = `https://www.nseindia.com/api/option-chain-indices?symbol=${nseSym}`;
+  const data = await fetchJsonViaProxies(url, 10000);
+  if(!data || !data.records || !Array.isArray(data.records.data)) return null;
+  return data;
+}
+
+/* liveData[sym] holds whatever real data has been fetched so far for that
+   symbol. Everything downstream (spot price, daily series, IV estimate) reads
+   from here first and only drops back to the seeded synthetic model when a
+   field hasn't been fetched yet or every proxy attempt failed. */
+const liveData = {};
+Object.keys(YF_SYMBOL).forEach(s=> liveData[s] = { spot:null, prevClose:null, series:null, chain:null, chainAt:0, lastQuoteAt:0, lastSeriesAt:0, source:'none' });
+let vixValue = null;
+let vixSource = 'none';
+let dataStatus = 'connecting'; // 'connecting' | 'live' | 'partial' | 'offline'
+
+async function refreshQuote(sym){
+  const chart = await fetchYahooChart(YF_SYMBOL[sym], '5d', '1d');
+  if(!chart) return false;
+  const last = chart.bars[chart.bars.length-1];
+  liveData[sym].spot = chart.meta.regularMarketPrice ?? last.c;
+  liveData[sym].prevClose = chart.meta.chartPreviousClose ?? chart.meta.previousClose ?? last.o;
+  liveData[sym].lastQuoteAt = Date.now();
+  liveData[sym].source = 'live';
+  return true;
+}
+
+async function refreshDailySeries(sym){
+  const chart = await fetchYahooChart(YF_SYMBOL[sym], '1y', '1d');
+  if(!chart) return false;
+  liveData[sym].series = chart.bars;
+  liveData[sym].lastSeriesAt = Date.now();
+  if(liveData[sym].spot==null){ liveData[sym].spot = chart.meta.regularMarketPrice ?? chart.bars[chart.bars.length-1].c; liveData[sym].source='live'; }
+  if(liveData[sym].prevClose==null) liveData[sym].prevClose = chart.meta.chartPreviousClose ?? chart.meta.previousClose;
+  return true;
+}
+
+async function refreshVix(){
+  const chart = await fetchYahooChart(VIX_YF_SYMBOL, '5d', '1d');
+  if(!chart) return false;
+  vixValue = chart.meta.regularMarketPrice ?? chart.bars[chart.bars.length-1].c;
+  vixSource = 'live';
+  return true;
+}
+
+async function refreshChain(sym){
+  const data = await fetchNseOptionChain(sym);
+  if(!data) return false;
+  liveData[sym].chain = data;
+  liveData[sym].chainAt = Date.now();
+  return true;
+}
+
+function updateDataBadge(){
+  const el = document.getElementById('dataBadge');
+  if(!el) return;
+  const symLive = liveData[state.symbol].source==='live';
+  if(dataStatus==='live' || symLive){
+    el.textContent = 'LIVE DATA (Yahoo Finance, ~delayed feed)';
+    el.className = 'badge badge-live';
+  } else if(dataStatus==='partial'){
+    el.textContent = 'PARTIAL LIVE DATA';
+    el.className = 'badge badge-live';
+  } else if(dataStatus==='connecting'){
+    el.textContent = 'CONNECTING…';
+    el.className = 'badge badge-sim';
+  } else {
+    el.textContent = 'SIMULATED (feed unreachable)';
+    el.className = 'badge badge-sim';
+  }
+}
+
+async function initLiveData(){
+  dataStatus = 'connecting'; updateDataBadge();
+  const results = await Promise.all(Object.keys(YF_SYMBOL).map(async sym=>{
+    const [q,s] = await Promise.all([refreshQuote(sym), refreshDailySeries(sym)]);
+    return q||s;
+  }));
+  await refreshVix();
+  refreshChain(state.symbol); // best-effort, non-blocking — NSE often blocks proxy IPs
+  const anyLive = results.some(Boolean);
+  const allLive = results.every(Boolean);
+  dataStatus = allLive? 'live' : (anyLive? 'partial' : 'offline');
+  updateDataBadge();
+  renderActiveTick();
+}
+
+/* Lightweight periodic refresh: re-pull just the quote (cheap) on the active
+   symbol every tick, and refresh its daily series/chain less often since those
+   are heavier calls against public proxies. */
+let quoteTick = 0;
+async function liveRefreshTick(){
+  quoteTick++;
+  const sym = state.symbol;
+  const ok = await refreshQuote(sym);
+  if(quoteTick % 12 === 0){ refreshDailySeries(sym); refreshVix(); refreshChain(sym); }
+  const anyLive = Object.keys(YF_SYMBOL).some(s=>liveData[s].source==='live');
+  dataStatus = ok? (dataStatus==='live'?'live':'partial') : (anyLive? 'partial' : dataStatus);
+  updateDataBadge();
+  renderActiveTick();
+}
+
+/* =========================== STATE =========================== */
+const STORE_KEY = 'noterm_state_v1';
+function loadState(){
+  try{ const s = JSON.parse(localStorage.getItem(STORE_KEY)); if(s) return s; }catch(e){}
+  return {symbol:'NIFTY', capital:200000, riskPct:1, refreshSec:5, watchlist:[], portfolio:[],
+    alertsConfig:{oi:true,iv:true,gamma:true,pcr:true,volume:true,trend:true,institutional:true},
+    dismissedAlerts:[], activeTab:'home', stopMultiplier:30, rrRatio:1.5,
+    angelApiKey:'', angelClientCode:'', angelEnabled:false,
+    risk:{}, sandboxCollapsed:{}};
+}
+let state = loadState();
+function saveState(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+/* =========================== RNG / SEEDING =========================== */
+function hashSeed(str){ let h=1779033703^str.length; for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19);} return (h^ (h>>>16))>>>0; }
+function mulberry32(seed){ let a=seed; return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function todaySeedStr(sym){ const d=new Date(); return sym+'-'+d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate(); }
+function normSample(rng){ let u=0,v=0; while(u===0)u=rng(); while(v===0)v=rng(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+
+/* running live-tick state per symbol (kept in memory, not reseeded) */
+const liveState = {};
+function ensureLive(sym){
+  if(!liveState[sym]){
+    const rng = mulberry32(hashSeed(todaySeedStr(sym)));
+    liveState[sym] = { rng, spot: SYMBOLS[sym].spot * (1+ (rng()-0.5)*0.01), prevClose: SYMBOLS[sym].spot, tick:0 };
+  }
+  const ls = liveState[sym];
+  const live = liveData[sym];
+  if(live && live.spot!=null){
+    // Real quote available — use it directly instead of the synthetic walk.
+    ls.spot = live.spot;
+    ls.prevClose = live.prevClose ?? ls.prevClose;
+    ls.live = true;
+  } else {
+    ls.live = false;
+  }
+  return ls;
+}
+function liveTick(sym){
+  const ls = ensureLive(sym);
+  if(ls.live) return ls; // real quote already set by ensureLive; nothing to simulate
+  const iv = getATMIV(sym);
+  const vol = iv/100/Math.sqrt(252*75); // rough intraday step vol, offline fallback only
+  ls.spot = ls.spot * (1 + normSample(ls.rng)*vol*0.6);
+  ls.tick++;
+  return ls;
+}
+
+/* =========================== STAT HELPERS =========================== */
+function ncdf(x){ const t=1/(1+0.2316419*Math.abs(x)); const y=1-(1/Math.sqrt(2*Math.PI))*Math.exp(-x*x/2)*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429)))); return x>=0?y:1-y; }
+function npdf(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+
+/* =========================== BLACK-SCHOLES =========================== */
+function blackScholes(S,K,T,r,sigma,type){
+  if(T<=0) T=0.0007;
+  const sd=sigma*Math.sqrt(T);
+  const d1=(Math.log(S/K)+(r+sigma*sigma/2)*T)/sd;
+  const d2=d1-sd;
+  let price,delta,theta,rho;
+  const gamma = npdf(d1)/(S*sd);
+  const vega = S*npdf(d1)*Math.sqrt(T)/100;
+  if(type==='CE'){
+    price = S*ncdf(d1)-K*Math.exp(-r*T)*ncdf(d2);
+    delta = ncdf(d1);
+    theta = (-S*npdf(d1)*sigma/(2*Math.sqrt(T)) - r*K*Math.exp(-r*T)*ncdf(d2))/365;
+    rho = K*T*Math.exp(-r*T)*ncdf(d2)/100;
+  } else {
+    price = K*Math.exp(-r*T)*ncdf(-d2)-S*ncdf(-d1);
+    delta = ncdf(d1)-1;
+    theta = (-S*npdf(d1)*sigma/(2*Math.sqrt(T)) + r*K*Math.exp(-r*T)*ncdf(-d2))/365;
+    rho = -K*T*Math.exp(-r*T)*ncdf(-d2)/100;
+  }
+  return {price:Math.max(price,0.05), delta, gamma, theta, vega, rho};
+}
+function ivSmile(K,S,atmIV){
+  const m = Math.log(K/S);
+  const skew = atmIV*0.35*Math.abs(m) + (K<S ? atmIV*0.06 : 0);
+  return Math.max(6, atmIV + skew*100)/100 * 100 / 100 ? (atmIV + skew*100) : atmIV; // keep in % units
+}
+function ivSmilePct(K,S,atmIV){
+  const m = Math.log(K/S);
+  return atmIV + atmIV*0.55*Math.abs(m) + (K<S? atmIV*0.08:0);
+}
+
+/* Realized volatility (annualized, %) from the last `n` real daily closes —
+   used as the IV proxy for symbols/expiries where a live IV isn't available. */
+function realizedVolPct(sym, n=20){
+  const c = closes(dailySeries(sym));
+  if(c.length<n+1) return null;
+  const rets=[]; for(let i=c.length-n;i<c.length;i++) rets.push(Math.log(c[i]/c[i-1]));
+  const mean = rets.reduce((a,b)=>a+b,0)/rets.length;
+  const varr = rets.reduce((a,b)=>a+(b-mean)*(b-mean),0)/rets.length;
+  return Math.sqrt(varr*252)*100;
+}
+const atmIvCache = {};
+function getATMIV(sym){
+  const key = sym+'-'+new Date().toDateString()+'-'+Math.floor(Date.now()/60000); // 1-min cache
+  if(atmIvCache[key]!=null) return atmIvCache[key];
+  const rv = realizedVolPct(sym, 20);
+  let iv;
+  if(vixValue!=null && rv!=null){
+    // Blend the live India VIX level with this index's own realized-vol
+    // character so BANKNIFTY/FINNIFTY/MIDCPNIFTY don't just inherit NIFTY's IV.
+    const niftyRv = sym==='NIFTY'? rv : realizedVolPct('NIFTY',20);
+    const ratio = (niftyRv && niftyRv>0)? rv/niftyRv : 1;
+    iv = vixValue*ratio;
+  } else if(rv!=null){
+    iv = rv;
+  } else {
+    iv = SYMBOLS[sym].atmIV; // last-resort seed value when no real data has loaded yet
+  }
+  iv = Math.max(6, Math.min(60, iv));
+  atmIvCache[key] = iv;
+  return iv;
+}
+
+/* =========================== DAILY SERIES (for technicals) =========================== */
+const seriesCache = {};
+function dailySeries(sym, days=260){
+  // Real fetched OHLC history takes priority — every indicator (EMA/RSI/MACD/
+  // ADX/SuperTrend/pivots/etc.) then runs on actual market data.
+  if(liveData[sym] && liveData[sym].series && liveData[sym].series.length>30){
+    return liveData[sym].series;
+  }
+  return syntheticDailySeries(sym, days);
+}
+function syntheticDailySeries(sym, days=260){
+  const key = sym+'-'+new Date().toDateString();
+  if(seriesCache[key]) return seriesCache[key];
+  const rng = mulberry32(hashSeed('series-'+sym+'-'+new Date().toDateString()));
+  const base = SYMBOLS[sym].spot;
+  let price = base*0.90;
+  const out=[];
+  let regimeVol = 0.011;
+  for(let i=0;i<days;i++){
+    if(rng()<0.03) regimeVol = 0.008 + rng()*0.014; // vol regime shifts
+    const drift = 0.0002;
+    const ret = drift + normSample(rng)*regimeVol;
+    const open = price;
+    const close = price*(1+ret);
+    const high = Math.max(open,close)*(1+Math.abs(normSample(rng))*regimeVol*0.4);
+    const low = Math.min(open,close)*(1-Math.abs(normSample(rng))*regimeVol*0.4);
+    const volume = Math.round(1_000_000 + rng()*4_000_000);
+    out.push({t:i,o:open,h:high,l:low,c:close,v:volume});
+    price = close;
+  }
+  // rescale so last close matches current symbol spot for coherence
+  const scale = base/out[out.length-1].c;
+  out.forEach(b=>{b.o*=scale;b.h*=scale;b.l*=scale;b.c*=scale;});
+  seriesCache[key]=out;
+  return out;
+}
+
+/* =========================== INDICATORS =========================== */
+function ema(arr,n){ const k=2/(n+1); let out=[]; let prev; arr.forEach((v,i)=>{ prev = i===0? v : v*k+prev*(1-k); out.push(prev);}); return out; }
+function closes(series){ return series.map(b=>b.c); }
+function sma(arr,n){ return arr.map((_,i)=> i<n-1? null : arr.slice(i-n+1,i+1).reduce((a,b)=>a+b,0)/n); }
+function rsi(arr,n=14){
+  let gains=[0],losses=[0];
+  for(let i=1;i<arr.length;i++){ const d=arr[i]-arr[i-1]; gains.push(Math.max(d,0)); losses.push(Math.max(-d,0)); }
+  let out=[50]; let ag=gains.slice(1,n+1).reduce((a,b)=>a+b,0)/n, al=losses.slice(1,n+1).reduce((a,b)=>a+b,0)/n;
+  for(let i=1;i<arr.length;i++){
+    if(i<n){ out.push(50); continue; }
+    ag = (ag*(n-1)+gains[i])/n; al=(al*(n-1)+losses[i])/n;
+    const rs = al===0? 100 : ag/al;
+    out.push(100-100/(1+rs));
+  }
+  return out;
+}
+function macd(arr){
+  const e12=ema(arr,12), e26=ema(arr,26);
+  const line = arr.map((_,i)=>e12[i]-e26[i]);
+  const signal = ema(line,9);
+  const hist = line.map((v,i)=>v-signal[i]);
+  return {line,signal,hist};
+}
+function atr(series,n=14){
+  const trs=series.map((b,i)=> i===0? b.h-b.l : Math.max(b.h-b.l, Math.abs(b.h-series[i-1].c), Math.abs(b.l-series[i-1].c)));
+  let out=[trs[0]]; for(let i=1;i<trs.length;i++){ out.push(i<n? (out[i-1]*(i)+trs[i])/(i+1) : (out[i-1]*(n-1)+trs[i])/n); }
+  return out;
+}
+function bollinger(arr,n=20,mult=2){
+  const mid = sma(arr,n);
+  return arr.map((_,i)=>{ if(i<n-1) return {mid:null,upper:null,lower:null};
+    const win = arr.slice(i-n+1,i+1); const m=mid[i];
+    const sd = Math.sqrt(win.reduce((a,v)=>a+(v-m)*(v-m),0)/n);
+    return {mid:m, upper:m+mult*sd, lower:m-mult*sd};
+  });
+}
+function adxCalc(series,n=14){
+  let plusDM=[0],minusDM=[0],tr=[0];
+  for(let i=1;i<series.length;i++){
+    const up=series[i].h-series[i-1].h, down=series[i-1].l-series[i].l;
+    plusDM.push(up>down && up>0? up:0); minusDM.push(down>up && down>0? down:0);
+    tr.push(Math.max(series[i].h-series[i].l, Math.abs(series[i].h-series[i-1].c), Math.abs(series[i].l-series[i-1].c)));
+  }
+  function wsmooth(arr){ let out=[arr[0]]; for(let i=1;i<arr.length;i++){ out.push(i<n? out[i-1]+arr[i] : out[i-1]-out[i-1]/n+arr[i]); } return out; }
+  const strS=wsmooth(tr), pS=wsmooth(plusDM), mS=wsmooth(minusDM);
+  const pdi = pS.map((v,i)=> strS[i]? 100*v/strS[i]:0), mdi = mS.map((v,i)=> strS[i]? 100*v/strS[i]:0);
+  const dx = pdi.map((v,i)=> (v+mdi[i])? 100*Math.abs(v-mdi[i])/(v+mdi[i]) : 0);
+  return {pdi,mdi,adx: ema(dx,n)};
+}
+function superTrend(series,n=10,mult=3){
+  const atrv = atr(series,n);
+  let out=[]; let dir=1, uband=0, lband=0;
+  series.forEach((b,i)=>{
+    const mid=(b.h+b.l)/2;
+    let ub=mid+mult*atrv[i], lb=mid-mult*atrv[i];
+    if(i>0){
+      ub = (ub<out[i-1].ub || series[i-1].c>out[i-1].ub) ? ub : out[i-1].ub;
+      lb = (lb>out[i-1].lb || series[i-1].c<out[i-1].lb) ? lb : out[i-1].lb;
+      if(out[i-1].dir===1 && b.c<lb) dir=-1; else if(out[i-1].dir===-1 && b.c>ub) dir=1; else dir=out[i-1].dir;
+    }
+    out.push({ub,lb,dir,line: dir===1?lb:ub});
+  });
+  return out;
+}
+function vwapCalc(series){
+  let cv=0,cpv=0,out=[];
+  series.forEach(b=>{ const tp=(b.h+b.l+b.c)/3; cpv+=tp*b.v; cv+=b.v; out.push(cpv/cv); });
+  return out;
+}
+function pivotsCPR(series){
+  const p = series[series.length-2];
+  const piv=(p.h+p.l+p.c)/3, bc=(p.h+p.l)/2, tc=2*piv-bc;
+  return {piv,bc,tc,r1:2*piv-p.l,s1:2*piv-p.h,r2:piv+(p.h-p.l),s2:piv-(p.h-p.l)};
+}
+function swingLevels(series,lb=20){
+  const win=series.slice(-lb);
+  return {resistance: Math.max(...win.map(b=>b.h)), support: Math.min(...win.map(b=>b.l))};
+}
+
+function techSnapshot(sym){
+  const series = dailySeries(sym);
+  const c = closes(series);
+  const e9=ema(c,9),e20=ema(c,20),e50=ema(c,50),e100=ema(c,100),e200=ema(c,200);
+  const r = rsi(c); const m = macd(c); const a = atr(series); const bb = bollinger(c);
+  const adx = adxCalc(series); const st = superTrend(series); const vw = vwapCalc(series);
+  const piv = pivotsCPR(series); const sw = swingLevels(series);
+  const i = c.length-1;
+  return { series, close:c[i], ema:{e9:e9[i],e20:e20[i],e50:e50[i],e100:e100[i],e200:e200[i]},
+    rsi:r[i], macd:{line:m.line[i],signal:m.signal[i],hist:m.hist[i]}, atr:a[i], bb:bb[i],
+    adx:adx.adx[i], pdi:adx.pdi[i], mdi:adx.mdi[i], superTrend:st[i], vwap:vw[i], pivots:piv, swing:sw };
+}
+
+/* =========================== EXPIRY CALENDAR =========================== */
+/* Since 1 Sep 2025 (SEBI's one-weekly-index-per-exchange rule): NIFTY is the
+   only NSE index with a weekly (every Tuesday); SENSEX is BSE's weekly (every
+   Thursday). BANKNIFTY/FINNIFTY/MIDCPNIFTY are monthly-only now. Monthly
+   contracts expire on the last Tuesday (NSE) / last Thursday (BSE) of the
+   month. Exchange holidays shift the real date back a trading day — that
+   holiday adjustment isn't modeled here, so treat this as the scheduled date. */
+function ordinalSuffix(n){ const s=['th','st','nd','rd']; const v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+function fmtExpiryLabel(d){ return `${ordinalSuffix(d.getDate())} ${d.toLocaleDateString('en-IN',{month:'short'})}`; }
+function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function nextWeekday(from, dow){ const d=stripTime(from); const diff=(dow-d.getDay()+7)%7; d.setDate(d.getDate()+diff); return d; }
+function lastWeekdayOfMonth(year, month, dow){ const last=new Date(year, month+1, 0); const diff=(last.getDay()-dow+7)%7; last.setDate(last.getDate()-diff); return stripTime(last); }
+
+const WEEKLY_EXPIRY_DOW  = { NIFTY:2, SENSEX:4 };                                  // Tue, Thu
+const MONTHLY_EXPIRY_DOW = { NIFTY:2, BANKNIFTY:2, FINNIFTY:2, MIDCPNIFTY:2, SENSEX:4 };
+
+function nextMonthlyExpiry(sym, from=new Date()){
+  const dow = MONTHLY_EXPIRY_DOW[sym];
+  const today = stripTime(from);
+  let y=today.getFullYear(), m=today.getMonth();
+  let d = lastWeekdayOfMonth(y,m,dow);
+  if(d < today){ m++; if(m>11){m=0;y++;} d=lastWeekdayOfMonth(y,m,dow); }
+  return d;
+}
+function nextWeeklyExpiry(sym, from=new Date()){
+  if(WEEKLY_EXPIRY_DOW[sym]==null) return null;
+  return nextWeekday(from, WEEKLY_EXPIRY_DOW[sym]);
+}
+/* The tenor actually used for pricing/strike-selection: the nearest tradable
+   expiry for this symbol — weekly when the exchange still lists one and it
+   falls before month-end, otherwise the monthly. */
+const expiryCache = {};
+function getActiveExpiry(sym, from=new Date()){
+  const key = sym+'-'+stripTime(from).getTime();
+  if(expiryCache[key]) return expiryCache[key];
+  const weekly = nextWeeklyExpiry(sym, from);
+  const monthly = nextMonthlyExpiry(sym, from);
+  const useWeekly = weekly!=null && weekly.getTime() < monthly.getTime();
+  const date = useWeekly? weekly : monthly;
+  const days = Math.max(1, Math.round((date-stripTime(from))/86400000));
+  const info = { date, days, isWeekly: useWeekly, label: `${fmtExpiryLabel(date)} (${useWeekly?'Weekly':'Monthly'})` };
+  expiryCache[key] = info;
+  return info;
+}
+
+/* =========================== OPTION CHAIN =========================== */
+function parseNseDate(s){ // NSE format: "20-Aug-2026"
+  const MON = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  const [d,mon,y] = s.split('-');
+  return new Date(Number(y), MON[mon], Number(d));
+}
+function nseChainRowsBySrike(sym){
+  const raw = liveData[sym] && liveData[sym].chain;
+  if(!raw || !raw.records || !raw.records.expiryDates || !raw.records.expiryDates[0]) return null;
+  const nearestExpiry = raw.records.expiryDates[0]; // NSE lists expiries ascending — [0] is nearest
+  const map = {};
+  raw.records.data.forEach(row=>{
+    if(row.expiryDate !== nearestExpiry) return; // NSE mixes every expiry in one payload — keep only the nearest so strikes aren't a blend of two different contracts
+    map[row.strikePrice] = {
+      ce: row.CE ? {oi:row.CE.openInterest, oiChg:row.CE.changeinOpenInterest, vol:row.CE.totalTradedVolume, ltp:row.CE.lastPrice, iv:row.CE.impliedVolatility} : null,
+      pe: row.PE ? {oi:row.PE.openInterest, oiChg:row.PE.changeinOpenInterest, vol:row.PE.totalTradedVolume, ltp:row.PE.lastPrice, iv:row.PE.impliedVolatility} : null,
+    };
+  });
+  return { map, expiryDateStr:nearestExpiry, expiryDate:parseNseDate(nearestExpiry), isLive:true };
+}
+function chainFor(sym, spot, expiryInfo){
+  const cfg = SYMBOLS[sym];
+  const atmStrike = Math.round(spot/cfg.step)*cfg.step;
+  const n = 12;
+  const rows=[];
+  const live = nseChainRowsBySrike(sym);
+  // If NSE confirmed a live expiry date, price off that exact date (it reflects
+  // real holiday shifts our calendar model doesn't know about); otherwise use
+  // the calendar-computed nearest expiry.
+  const days = live ? Math.max(1, Math.round((live.expiryDate - stripTime(new Date()))/86400000)) : expiryInfo.days;
+  const T = days/365;
+  const atmIV = getATMIV(sym);
+  let usedLive = false;
+  for(let k=-n;k<=n;k++){
+    const K = atmStrike + k*cfg.step;
+    if(K<=0) continue;
+    const liveRow = live && live.map[K];
+    const iv = (liveRow && (liveRow.ce?.iv || liveRow.pe?.iv)) ? (liveRow.ce?.iv || liveRow.pe?.iv) : ivSmilePct(K,spot,atmIV);
+    const ce = blackScholes(spot,K,T,0.065,iv/100,'CE');
+    const pe = blackScholes(spot,K,T,0.065,iv/100,'PE');
+    let ceOI, peOI, ceOIchg, peOIchg, ceVol, peVol;
+    if(liveRow){
+      usedLive = true;
+      ceOI = liveRow.ce?.oi ?? 0; peOI = liveRow.pe?.oi ?? 0;
+      ceOIchg = liveRow.ce?.oiChg ?? 0; peOIchg = liveRow.pe?.oiChg ?? 0;
+      ceVol = liveRow.ce?.vol ?? 0; peVol = liveRow.pe?.vol ?? 0;
+      if(liveRow.ce?.ltp) ce.price = liveRow.ce.ltp;
+      if(liveRow.pe?.ltp) pe.price = liveRow.pe.ltp;
+    } else {
+      // No live NSE chain reachable for this strike/symbol — OI/volume are
+      // model-estimated from a liquidity-decay curve around the real spot.
+      // Seeded per strike+day (not the shared live-tick RNG) so the numbers
+      // — and therefore which strike scores "best" — stay stable between the
+      // moment you look at the Strike Selector and the moment you click Add,
+      // instead of re-rolling on every render.
+      const seed = mulberry32(hashSeed('oi-'+sym+'-'+K+'-'+todaySeedStr(sym)));
+      const dist = Math.abs(k);
+      const liquidity = Math.exp(-(dist*dist)/40);
+      const baseOI = Math.round(liquidity*(400000+seed()*300000));
+      ceOI = Math.round(baseOI*(0.85+seed()*0.3));
+      peOI = Math.round(baseOI*(0.85+seed()*0.3));
+      ceOIchg = Math.round((seed()-0.45)*ceOI*0.25);
+      peOIchg = Math.round((seed()-0.45)*peOI*0.25);
+      ceVol = Math.round(ceOI*(0.2+seed()*0.6));
+      peVol = Math.round(peOI*(0.2+seed()*0.6));
+    }
+    rows.push({K, iv, ce:{...ce, oi:ceOI, oiChg:ceOIchg, vol:ceVol}, pe:{...pe, oi:peOI, oiChg:peOIchg, vol:peVol}, atm: K===atmStrike, liveRow:!!liveRow});
+  }
+  const expiryInfoOut = (live)
+    ? { date: live.expiryDate, days, isWeekly: expiryInfo.isWeekly, label: `${fmtExpiryLabel(live.expiryDate)} (${expiryInfo.isWeekly?'Weekly':'Monthly'})`, nseConfirmed:true }
+    : { ...expiryInfo, nseConfirmed:false };
+  return {atmStrike, rows, spot, expiryDays:days, expiryInfo:expiryInfoOut, lot:cfg.lot, chainIsLive:usedLive};
+}
+function classifyBuildup(priceUp, oiUp){
+  if(priceUp && oiUp) return {label:'Long Build-up', cls:'pill-buy'};
+  if(!priceUp && oiUp) return {label:'Short Build-up', cls:'pill-sell'};
+  if(priceUp && !oiUp) return {label:'Short Covering', cls:'pill-buy'};
+  return {label:'Long Unwinding', cls:'pill-sell'};
+}
+function pcrCalc(chain){
+  const totalCall = chain.rows.reduce((a,r)=>a+r.ce.oi,0);
+  const totalPut = chain.rows.reduce((a,r)=>a+r.pe.oi,0);
+  return totalCall? totalPut/totalCall : 1;
+}
+function maxPainCalc(chain){
+  let best=null,bestPain=Infinity;
+  chain.rows.forEach(row=>{
+    const K_test = row.K;
+    let pain=0;
+    chain.rows.forEach(r=>{ pain += r.ce.oi*Math.max(0,K_test-r.K); pain += r.pe.oi*Math.max(0,r.K-K_test); });
+    if(pain<bestPain){bestPain=pain; best=K_test;}
+  });
+  return best;
+}
+function gammaExposureProfile(chain){
+  return chain.rows.map(r=>{
+    const ceGex = r.ce.gamma*r.ce.oi*chain.lot*chain.spot*chain.spot*0.01;
+    const peGex = -r.pe.gamma*r.pe.oi*chain.lot*chain.spot*chain.spot*0.01;
+    return {K:r.K, gex: ceGex+peGex};
+  });
+}
+function gammaFlip(profile){
+  let cum=0, prevSign=null, flip=null;
+  const sorted=[...profile].sort((a,b)=>a.K-b.K);
+  for(const p of sorted){ cum+=p.gex; const sign=cum>=0; if(prevSign!==null && sign!==prevSign) flip=p.K; prevSign=sign; }
+  return flip;
+}
+function ivRankCalc(sym,currentIV){
+  const c = closes(dailySeries(sym));
+  const win = 20;
+  const hist = [];
+  for(let i=win;i<c.length;i++){
+    const rets=[]; for(let j=i-win+1;j<=i;j++) rets.push(Math.log(c[j]/c[j-1]));
+    const mean = rets.reduce((a,b)=>a+b,0)/rets.length;
+    const varr = rets.reduce((a,b)=>a+(b-mean)*(b-mean),0)/rets.length;
+    hist.push(Math.sqrt(varr*252)*100);
+  }
+  if(hist.length<20){
+    // Not enough real history loaded yet — neutral placeholder until the daily series arrives.
+    return {rank:50, percentile:50};
+  }
+  hist.push(currentIV);
+  const min=Math.min(...hist), max=Math.max(...hist);
+  const rank = max>min? (currentIV-min)/(max-min)*100 : 50;
+  const pct = hist.filter(v=>v<currentIV).length/hist.length*100;
+  return {rank:Math.max(0,Math.min(100,rank)), percentile:pct};
+}
+
+/* =========================== INSTITUTIONAL FLOW (simulated) =========================== */
+function institutionalFlow(sym){
+  const rng = mulberry32(hashSeed('inst-'+sym+'-'+new Date().toDateString()));
+  const fiiFut = Math.round((rng()-0.48)*3500);
+  const diiCash = Math.round((rng()-0.4)*2800);
+  const fiiCash = Math.round((rng()-0.55)*3000);
+  const delivery = Math.round(35+rng()*30);
+  const sectors = ['Banking','IT','Auto','Pharma','FMCG','Metal','Energy','Realty','Infra'];
+  const rotation = sectors.map(s=>({sector:s, chg:+((rng()-0.5)*4).toFixed(2)}));
+  return {fiiFut,diiCash,fiiCash,delivery,rotation};
+}
+
+/* =========================== AI DECISION ENGINE =========================== */
+function subscoreTrend(t){
+  let s=50;
+  const stack=[t.ema.e9,t.ema.e20,t.ema.e50,t.ema.e100,t.ema.e200];
+  let bull=0; for(let i=0;i<stack.length-1;i++) if(stack[i]>stack[i+1]) bull++;
+  s = bull/4*100;
+  if(t.superTrend.dir===1) s = Math.min(100,s+8); else s=Math.max(0,s-8);
+  return s;
+}
+function subscoreMomentum(t){
+  let s = t.rsi;
+  if(t.macd.hist>0) s = Math.min(100, s+10); else s=Math.max(0,s-10);
+  return s;
+}
+function subscorePositioning(pcr){
+  // higher PCR => more bullish contrarian read, center at 1
+  return Math.max(0,Math.min(100, 50 + (pcr-1)*60));
+}
+function subscoreVol(ivRank, atrPct){
+  return Math.max(0,Math.min(100, 100-Math.abs(ivRank-50)-Math.abs(atrPct*100-1.2)*10));
+}
+function subscoreInstitutional(flow){
+  const net = flow.fiiFut + flow.diiCash;
+  return Math.max(0,Math.min(100, 50+net/120));
+}
+function subscoreGamma(gammaSign){
+  return gammaSign>0? 55:45; // mild bias only, informational
+}
+function subscorePriceAction(t){
+  const rangePos = (t.close - t.swing.support)/(t.swing.resistance-t.swing.support||1);
+  return Math.max(0,Math.min(100, rangePos*100));
+}
+function computeDecisionScore(sym, spot){
+  const t = techSnapshot(sym);
+  const exp = getActiveExpiry(sym); const chain = chainFor(sym, spot, exp);
+  const pcr = pcrCalc(chain);
+  const gexProfile = gammaExposureProfile(chain);
+  const netGex = gexProfile.reduce((a,p)=>a+p.gex,0);
+  const ivr = ivRankCalc(sym, chain.rows.find(r=>r.atm)?.iv || getATMIV(sym));
+  const flow = institutionalFlow(sym);
+  const atrPct = t.atr/t.close;
+
+  const comp = {
+    trend: subscoreTrend(t), momentum: subscoreMomentum(t), positioning: subscorePositioning(pcr),
+    volatility: subscoreVol(ivr.rank, atrPct), institutional: subscoreInstitutional(flow),
+    gamma: subscoreGamma(netGex), priceAction: subscorePriceAction(t)
+  };
+  const weights = {trend:20,momentum:15,positioning:15,volatility:10,institutional:15,gamma:10,priceAction:15};
+  let score=0; Object.keys(weights).forEach(k=> score += comp[k]*weights[k]/100 );
+  const bias = score>65?'BULLISH':score<35?'BEARISH':'NEUTRAL';
+  const confidence = Math.min(100, Math.abs(score-50)*2);
+  const riskLevel = (atrPct>0.018 || ivr.rank>80) ? 'High' : (atrPct>0.012||ivr.rank>60) ? 'Medium':'Low';
+
+  const reasons=[];
+  reasons.push(`EMA stack is ${comp.trend>60?'bullishly':comp.trend<40?'bearishly':'mixed-'}aligned across 9/20/50/100/200; SuperTrend is ${t.superTrend.dir===1?'up':'down'}.`);
+  reasons.push(`RSI ${t.rsi.toFixed(1)} with MACD histogram ${t.macd.hist>0?'positive (rising momentum)':'negative (fading momentum)'}.`);
+  reasons.push(`PCR near ATM is ${pcr.toFixed(2)} (${pcr>1.2?'put-heavy, contrarian bullish tilt':pcr<0.8?'call-heavy, contrarian bearish tilt':'balanced'}).`);
+  reasons.push(`IV Rank ${ivr.rank.toFixed(0)}% — ${ivr.rank>60?'options are relatively expensive (favors selling premium)':ivr.rank<35?'options are relatively cheap (favors buying premium)':'IV is mid-range'}.`);
+  reasons.push(`Simulated FII+DII net flow is ${(flow.fiiFut+flow.diiCash)>0?'net positive':'net negative'}, delivery % ${flow.delivery}%.`);
+  reasons.push(`Net Gamma Exposure is ${netGex>0?'positive (range-bound hedging pressure likely)':'negative (moves may get amplified)'}.`);
+
+  let action='WAIT';
+  if(confidence<28 || riskLevel==='High') action='WAIT';
+  else if(bias==='BULLISH') action='BUY CE';
+  else if(bias==='BEARISH') action='BUY PE';
+  else if(ivr.rank>60) action = pcr>1 ? 'SELL PE':'SELL CE';
+  else action='NO TRADE';
+
+  return {score, bias, confidence, riskLevel, comp, reasons, action, pcr, ivr, netGex, flow, t, chain, atrPct};
+}
+
+/* =========================== ANGEL ONE SMARTAPI (optional broker feed) ===========================
+   SmartAPI is CORS-enabled for browser calls (Angel's own docs: "cross site request
+   enabled, hence can be called directly from browsers") — no proxy needed, unlike
+   NSE. It does NOT expose a full option-chain endpoint though, so this is used
+   narrowly: once the Strike Selector has picked its 4 candidate strikes (via the
+   existing NSE/model chain), we resolve just those 4 to Angel's instrument tokens
+   and pull their real broker LTP — the actual tradable price, not a proxy/model
+   estimate. Credentials are kept in memory only (not localStorage) and never leave
+   the browser except to Angel's own API. */
+const angelSession = { jwt:null, feedToken:null, apiKey:null, clientcode:null, status:'disconnected', lastError:null };
+
+function base32Decode(b32){
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for(const c of b32.replace(/=+$/,'').toUpperCase().replace(/\s+/g,'')){
+    const idx = alphabet.indexOf(c);
+    if(idx===-1) continue;
+    bits += idx.toString(2).padStart(5,'0');
+  }
+  const bytes=[];
+  for(let i=0;i+8<=bits.length;i+=8) bytes.push(parseInt(bits.substr(i,8),2));
+  return new Uint8Array(bytes);
+}
+async function generateTOTP(secretBase32){
+  const key = base32Decode(secretBase32);
+  const counter = Math.floor(Date.now()/1000/30);
+  const buf = new ArrayBuffer(8); const view = new DataView(buf);
+  view.setUint32(0,0); view.setUint32(4,counter);
+  const cryptoKey = await crypto.subtle.importKey('raw', key, {name:'HMAC',hash:'SHA-1'}, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, buf));
+  const offset = sig[sig.length-1] & 0xf;
+  const code = ((sig[offset]&0x7f)<<24 | (sig[offset+1]&0xff)<<16 | (sig[offset+2]&0xff)<<8 | (sig[offset+3]&0xff)) % 1000000;
+  return String(code).padStart(6,'0');
+}
+function angelHeaders(){
+  return {
+    'Content-Type':'application/json', 'Accept':'application/json',
+    'X-UserType':'USER', 'X-SourceID':'WEB',
+    'X-ClientLocalIP':'127.0.0.1', 'X-ClientPublicIP':'127.0.0.1', 'X-MACAddress':'00:00:00:00:00:00',
+    'X-PrivateKey': angelSession.apiKey, 'Authorization':'Bearer '+angelSession.jwt,
+  };
+}
+async function angelLogin(clientcode, mpin, totpSecret, apiKey){
+  angelSession.status='connecting'; angelSession.lastError=null;
+  try{
+    const totp = await generateTOTP(totpSecret);
+    const res = await fetch('https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json','Accept':'application/json','X-UserType':'USER','X-SourceID':'WEB',
+        'X-ClientLocalIP':'127.0.0.1','X-ClientPublicIP':'127.0.0.1','X-MACAddress':'00:00:00:00:00:00','X-PrivateKey':apiKey },
+      body: JSON.stringify({clientcode, password:mpin, totp}),
+    });
+    const data = await res.json().catch(()=>null);
+    if(!data || data.status===false || !data.data?.jwtToken){
+      angelSession.status='error'; angelSession.lastError = data?.message || 'Login rejected — check client code, MPIN, TOTP secret and API key.';
+      return false;
+    }
+    angelSession.jwt = data.data.jwtToken; angelSession.feedToken = data.data.feedToken;
+    angelSession.apiKey = apiKey; angelSession.clientcode = clientcode; angelSession.status='connected';
+    return true;
+  }catch(e){ angelSession.status='error'; angelSession.lastError = 'Could not reach Angel One (network/CORS). Try again.'; return false; }
+}
+function angelDisconnect(){ angelSession.jwt=null; angelSession.feedToken=null; angelSession.apiKey=null; angelSession.clientcode=null; angelSession.status='disconnected'; angelSession.lastError=null; }
+function angelTradingSymbol(nseSym, expiryDate, strike, type){
+  const d = String(expiryDate.getDate()).padStart(2,'0');
+  const mon = expiryDate.toLocaleDateString('en-US',{month:'short'}).toUpperCase();
+  const yy = String(expiryDate.getFullYear()).slice(-2);
+  return `${nseSym}${d}${mon}${yy}${strike}${type}`;
+}
+const angelDebug = { lastRun:null, rows:[] }; // per-strike diagnostic trail, shown on the Strike Selector
+async function angelSearchToken(tradingSymbol){
+  try{
+    const res = await fetch('https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/searchScrip', {
+      method:'POST', headers: angelHeaders(), body: JSON.stringify({exchange:'NFO', searchscrip:tradingSymbol}),
+    });
+    const data = await res.json().catch(()=>null);
+    if(!res.ok) return {token:null, error:`searchScrip HTTP ${res.status}`};
+    if(data && data.status===false) return {token:null, error: data.message || data.errorcode || 'searchScrip rejected the request'};
+    const list = data?.data;
+    if(!Array.isArray(list) || !list.length) return {token:null, error:`No NFO instrument found for "${tradingSymbol}"`};
+    const match = list.find(r=>r.tradingsymbol===tradingSymbol) || list[0];
+    return match?.symboltoken ? {token:match.symboltoken, error:null} : {token:null, error:'Match found but no symboltoken in response'};
+  }catch(e){ return {token:null, error:'Network/CORS error reaching searchScrip: '+e.message}; }
+}
+async function angelLTP(token){
+  try{
+    const res = await fetch('https://apiconnect.angelone.in/rest/secure/angelbroking/market/v1/quote', {
+      method:'POST', headers: angelHeaders(), body: JSON.stringify({mode:'LTP', exchangeTokens:{NFO:[token]}}),
+    });
+    const data = await res.json().catch(()=>null);
+    if(!res.ok) return {ltp:null, error:`quote HTTP ${res.status}`};
+    if(data && data.status===false) return {ltp:null, error: data.message || data.errorcode || 'quote rejected the request'};
+    const row = data?.data?.fetched?.[0];
+    if(!row) return {ltp:null, error:'Token resolved but quote returned no fetched row (market closed or token stale?)'};
+    return (row.ltp!=null && row.ltp>0) ? {ltp:row.ltp, error:null} : {ltp:null, error:`quote returned ltp=${row.ltp} (likely no trades yet on this strike)`};
+  }catch(e){ return {ltp:null, error:'Network/CORS error reaching quote: '+e.message}; }
+}
+/* Single-contract search+quote — the shared primitive both the Strike
+   Selector overlay and the Portfolio/Exit position overlay build on. */
+async function angelQuoteOne(nseSym, expiryDate, strike, type){
+  const tsym = angelTradingSymbol(nseSym, expiryDate, strike, type);
+  const tokenRes = await angelSearchToken(tsym);
+  if(!tokenRes.token) return {tradingSymbol:tsym, ok:false, error:tokenRes.error};
+  const ltpRes = await angelLTP(tokenRes.token);
+  if(ltpRes.ltp!=null) return {tradingSymbol:tsym, ok:true, ltp:ltpRes.ltp};
+  return {tradingSymbol:tsym, ok:false, error:ltpRes.error};
+}
+/* Resolves and quotes ONLY the strikes actually shown on the Strike Selector
+   (typically 4), not the whole chain — keeps this to a handful of calls.
+   Every attempt (success or failure) is logged to angelDebug so the UI can
+   show exactly why a strike didn't get a live LTP, instead of silently
+   staying on the NSE/model badge. */
+async function angelFetchLiveLTP(sym, strikesWithType){
+  const rows = [];
+  if(angelSession.status!=='connected'){ angelDebug.lastRun=Date.now(); angelDebug.rows=[{note:'Not connected — click Connect in Settings first.'}]; return {}; }
+  const nseSym = NSE_CHAIN_SYMBOL[sym] || sym;
+  const exp = getActiveExpiry(sym);
+  const out = {};
+  for(const s of strikesWithType){
+    const r = await angelQuoteOne(nseSym, exp.date, s.strike, s.type);
+    rows.push({role:s.role, tradingSymbol:r.tradingSymbol, ok:r.ok, ltp:r.ltp, error:r.error});
+    if(r.ok) out[s.role]=r.ltp;
+  }
+  angelDebug.lastRun = Date.now(); angelDebug.rows = rows;
+  return out;
+}
+const angelLtpCache = {}, angelAppliedKey = {};
+/* Overlays real Angel One LTP onto an already-rendered Strike Selector
+   snapshot, throttled to once per ~30s per symbol so it can't spiral into a
+   render→fetch→render loop or hammer the API on every tick. */
+async function refreshAngelLtpForStrikes(sym, best){
+  if(!(state.angelEnabled && angelSession.status==='connected')) return;
+  const windowKey = sym+'-'+Math.floor(Date.now()/30000);
+  const applyLtpMap = ltpMap=>{
+    Object.keys(ltpMap||{}).forEach(role=>{
+      const targets = [best?.[role], strikeSelectorCache[sym]?.best?.[role]].filter(Boolean);
+      targets.forEach(target=>{
+        target.premium = ltpMap[role]; target.isLive = true; target.liveSource = 'angelone';
+        target.plan = tradePlan(target.premium, role.startsWith('buy'), SYMBOLS[sym].lot,
+          state.capital, state.riskPct, state.stopMultiplier, state.rrRatio);
+      });
+    });
+  };
+  const cached = angelLtpCache[windowKey];
+  if(cached) applyLtpMap(cached);
+  if(angelAppliedKey[sym]===windowKey) return;
+  angelAppliedKey[sym] = windowKey;
+  const need = Object.keys(best).map(role=>({role, strike:best[role].strike, type: role.includes('CE')?'CE':'PE'}));
+  const ltpMap = await angelFetchLiveLTP(sym, need);
+  angelLtpCache[windowKey] = ltpMap;
+  applyLtpMap(ltpMap);
+  if(state.activeTab==='strikes') renderActive();
+}
+/* Same idea, but for actual open Portfolio positions rather than the current
+   Strike Selector snapshot — these are the real trades in Exit Signals and
+   Portfolio, and each carries its own fixed strike/type/expiry (which can
+   differ from "today's nearest expiry" once a session or two has passed), so
+   each position is quoted against its own stored expiryDate rather than
+   getActiveExpiry(). Cached per contract for ~25s so re-renders (every
+   refreshSec tick) don't re-hit the API on every paint. */
+const angelPosLtpCache = {}; // key -> {ltp, ts}
+const angelPosInFlight = {};
+function posLtpKey(p){ return `${p.symbol}-${p.strike}-${p.type}-${p.expiryDate||''}`; }
+async function refreshAngelLtpForPositions(positions){
+  if(!(state.angelEnabled && angelSession.status==='connected')) return;
+  const now = Date.now();
+  const todo = positions.filter(p=>{
+    if(p.status!=='open' || !p.expiryDate || !NSE_CHAIN_SYMBOL[p.symbol]) return false;
+    const key = posLtpKey(p);
+    if(angelPosInFlight[key]) return false;
+    const cached = angelPosLtpCache[key];
+    return !cached || (now-cached.ts) > 25000;
+  });
+  if(!todo.length) return;
+  todo.forEach(p=> angelPosInFlight[posLtpKey(p)]=true);
+  let changed=false;
+  for(const p of todo){
+    const key = posLtpKey(p);
+    const r = await angelQuoteOne(NSE_CHAIN_SYMBOL[p.symbol], new Date(p.expiryDate), p.strike, p.type);
+    delete angelPosInFlight[key];
+    if(r.ok){ angelPosLtpCache[key] = {ltp:r.ltp, ts:Date.now()}; changed=true; }
+  }
+  if(changed && (state.activeTab==='portfolio' || state.activeTab==='exit')) renderActive();
+}
+
+/* =========================== STRIKE SELECTOR / TRADE PLANNER =========================== */
+function tradePlan(entry, isBuy, lot, capital, riskPct, stopMult, rr){
+  const slDist = entry*(stopMult/100);
+  const sl = isBuy? Math.max(0.05, entry-slDist) : entry+slDist;
+  const t1 = isBuy? entry + slDist*rr*0.5 : Math.max(0.05, entry - slDist*rr*0.5);
+  const t2 = isBuy? entry + slDist*rr : Math.max(0.05, entry - slDist*rr);
+  const riskPerLot = slDist*lot;
+  const maxLots = Math.max(1, Math.floor((capital*riskPct/100)/riskPerLot));
+  const qty = maxLots*lot;
+  return {sl,t1,t2,qty,lots:maxLots,maxLoss:slDist*qty,rr};
+}
+function bestStrikes(sym, spot){
+  const exp = getActiveExpiry(sym); const chain = chainFor(sym, spot, exp);
+  const ivr = ivRankCalc(sym, chain.rows.find(r=>r.atm)?.iv || getATMIV(sym));
+  const roles = ['buyCE','buyPE','sellCE','sellPE'];
+  const out={};
+  roles.forEach(role=>{
+    let best=null,bestScore=-Infinity;
+    chain.rows.forEach(row=>{
+      const sc = scoreStrike(row, spot, role, ivr);
+      if(sc>bestScore){bestScore=sc; best=row;}
+    });
+    const opt = role.includes('CE')? best.ce : best.pe;
+    const plan = tradePlan(opt.price, role.startsWith('buy'), chain.lot, state.capital, state.riskPct, state.stopMultiplier, state.rrRatio);
+    out[role] = {strike:best.K, premium:opt.price, delta:opt.delta, theta:opt.theta, oi:opt.oi,
+      confidence: Math.max(5,Math.min(97, 50+bestScore*0.4)), probITM: Math.round(Math.abs(opt.delta)*100),
+      riskScore: Math.round(Math.abs(opt.theta)*8 + (role.startsWith('buy')? (100-Math.abs(opt.delta)*100)*0.2:0)),
+      isLive: best.liveRow, expiryInfo: chain.expiryInfo, symbol:sym,
+      plan };
+  });
+  return out;
+}
+
+/* =========================== STRATEGY BUILDER ==========================*/
+const STRATEGIES = {
+  long_call: (S,atmIV,T)=>[{type:'CE',K:S,qty:1,side:1}],
+  long_put:  (S,atmIV,T)=>[{type:'PE',K:S,qty:1,side:1}],
+  bull_call_spread: (S,step)=>[{type:'CE',K:S,qty:1,side:1},{type:'CE',K:S+2*step,qty:1,side:-1}],
+  bear_put_spread: (S,step)=>[{type:'PE',K:S,qty:1,side:1},{type:'PE',K:S-2*step,qty:1,side:-1}],
+  long_straddle: (S)=>[{type:'CE',K:S,qty:1,side:1},{type:'PE',K:S,qty:1,side:1}],
+  long_strangle: (S,step)=>[{type:'CE',K:S+2*step,qty:1,side:1},{type:'PE',K:S-2*step,qty:1,side:1}],
+  scalping_strategy: (S)=>[{type:'CE',K:S,qty:1,side:1}],
+  iron_condor: (S,step)=>[{type:'PE',K:S-3*step,qty:1,side:1},{type:'PE',K:S-step,qty:1,side:-1},{type:'CE',K:S+step,qty:1,side:-1},{type:'CE',K:S+3*step,qty:1,side:1}],
+  bull_put_spread: (S,step)=>[{type:'PE',K:S-step,qty:1,side:-1},{type:'PE',K:S-3*step,qty:1,side:1}],
+  bear_call_spread: (S,step)=>[{type:'CE',K:S+step,qty:1,side:-1},{type:'CE',K:S+3*step,qty:1,side:1}],
+  iron_fly: (S,step)=>[{type:'CE',K:S,qty:1,side:-1},{type:'PE',K:S,qty:1,side:-1},{type:'CE',K:S+3*step,qty:1,side:1},{type:'PE',K:S-3*step,qty:1,side:1}],
+  short_straddle: (S)=>[{type:'CE',K:S,qty:1,side:-1},{type:'PE',K:S,qty:1,side:-1}],
+  short_strangle: (S,step)=>[{type:'CE',K:S+2*step,qty:1,side:-1},{type:'PE',K:S-2*step,qty:1,side:-1}],
+  butterfly: (S,step)=>[{type:'CE',K:S-step,qty:1,side:1},{type:'CE',K:S,qty:2,side:-1},{type:'CE',K:S+step,qty:1,side:1}],
+  broken_wing_butterfly: (S,step)=>[{type:'CE',K:S,qty:1,side:1},{type:'CE',K:S+step,qty:2,side:-1},{type:'CE',K:S+3*step,qty:1,side:1}],
+  jade_lizard: (S,step)=>[{type:'PE',K:S-2*step,qty:1,side:-1},{type:'CE',K:S+step,qty:1,side:-1},{type:'CE',K:S+2*step,qty:1,side:1}],
+  ratio_spread: (S,step)=>[{type:'CE',K:S,qty:1,side:1},{type:'CE',K:S+2*step,qty:2,side:-1}],
+  reverse_iron_condor: (S,step)=>[{type:'PE',K:S-step,qty:1,side:1},{type:'PE',K:S-3*step,qty:1,side:-1},{type:'CE',K:S+step,qty:1,side:1},{type:'CE',K:S+3*step,qty:1,side:-1}],
+  calendar_spread: (S)=>[{type:'CE',K:S,qty:1,side:-1},{type:'CE',K:S,qty:1,side:1}],
+  diagonal_spread: (S,step)=>[{type:'CE',K:S+step,qty:1,side:-1},{type:'CE',K:S,qty:1,side:1}],
+};
+const STRATEGY_NAMES = {long_call:'Long Call',long_put:'Long Put',bull_call_spread:'Bull Call Spread',bear_put_spread:'Bear Put Spread',
+  long_straddle:'Long Straddle',long_strangle:'Long Strangle',iron_condor:'Iron Condor',bull_put_spread:'Bull Put Spread',
+  bear_call_spread:'Bear Call Spread',iron_fly:'Iron Fly',short_straddle:'Short Straddle',short_strangle:'Short Strangle',
+  butterfly:'Butterfly',broken_wing_butterfly:'Broken Wing Butterfly',jade_lizard:'Jade Lizard',ratio_spread:'Ratio Spread',
+  reverse_iron_condor:'Reverse Iron Condor',calendar_spread:'Calendar Spread',diagonal_spread:'Diagonal Spread',scalping_strategy:'ATM Gamma Scalping'};
+function payoffCurve(legs, S, atmIV, T, range){
+  const premiums = legs.map(l=>{
+    const iv = ivSmilePct(l.K,S,atmIV);
+    const bs = blackScholes(S,l.K,T,0.065,iv/100,l.type);
+    return bs.price;
+  });
+  const netPremium = legs.reduce((a,l,i)=> a + l.side*premiums[i], 0);
+  const xs=[]; const ys=[];
+  for(let px=S*(1-range); px<=S*(1+range); px+=S*range/40){
+    let payoff=0;
+    legs.forEach((l,i)=>{
+      const intrinsic = l.type==='CE'? Math.max(0,px-l.K) : Math.max(0,l.K-px);
+      payoff += l.side*(intrinsic - premiums[i]);
+    });
+    xs.push(px); ys.push(payoff);
+  }
+  return {xs,ys,netPremium};
+}
+
+/* =========================== BACKTEST ENGINE ============================*/
+function backtest(sym){
+  const series = dailySeries(sym, 500);
+  const c = closes(series);
+  const e9=ema(c,9), e20=ema(c,20), r=rsi(c);
+  let trades=[]; let equity=100000; const curve=[equity];
+  for(let i=30;i<series.length-1;i++){
+    const bullSignal = e9[i]>e20[i] && r[i]>55 && e9[i-1]<=e20[i-1];
+    const bearSignal = e9[i]<e20[i] && r[i]<45 && e9[i-1]>=e20[i-1];
+    if(bullSignal || bearSignal){
+      const entry=c[i]; const exitIdx=Math.min(i+5,series.length-1); const exitP=c[exitIdx];
+      const ret = bullSignal? (exitP-entry)/entry : (entry-exitP)/entry;
+      const pnl = equity*0.02*ret*10; // leveraged options-like proxy payoff
+      equity += pnl;
+      trades.push({dir:bullSignal?'CE':'PE', entry, exit:exitP, ret, pnl});
+      curve.push(equity);
+    }
+  }
+  const wins = trades.filter(t=>t.pnl>0);
+  const losses = trades.filter(t=>t.pnl<=0);
+  const winRate = trades.length? wins.length/trades.length*100:0;
+  const grossProfit = wins.reduce((a,t)=>a+t.pnl,0), grossLoss = Math.abs(losses.reduce((a,t)=>a+t.pnl,0));
+  const profitFactor = grossLoss? grossProfit/grossLoss : grossProfit>0?Infinity:0;
+  let peak=curve[0],maxDD=0; curve.forEach(v=>{ peak=Math.max(peak,v); maxDD=Math.max(maxDD,(peak-v)/peak*100); });
+  const totalReturn = (equity-100000)/100000*100;
+  return {trades, winRate, profitFactor, maxDD, totalReturn, curve};
+}
+
+/* =========================== FORMAT HELPERS =========================== */
+function fmt(n,d=2){ return Number(n).toLocaleString('en-IN',{maximumFractionDigits:d,minimumFractionDigits:d}); }
+function fmtInt(n){ return Number(Math.round(n)).toLocaleString('en-IN'); }
+
+/* Shared position pricing/P&L helpers — used by Exit Signals, Portfolio close,
+   and the Profit card, so there is exactly one place that knows how to price
+   an open position's current LTP against the live/simulated chain.
+   priceInfo() checks the real Angel One LTP cache first (populated by
+   refreshAngelLtpForPositions), then a live NSE chain row, then finally the
+   Black-Scholes model — and reports which one it used so the UI can badge
+   each row honestly instead of implying every number is real-time. */
+function priceInfo(p){
+  if(state.angelEnabled && angelSession.status==='connected' && p.expiryDate){
+    const cached = angelPosLtpCache[posLtpKey(p)];
+    if(cached && Date.now()-cached.ts < 90000) return {price:cached.ltp, source:'angelone'};
+  }
+  try{
+    const spot = ensureLive(p.symbol).spot;
+    const exp = getActiveExpiry(p.symbol);
+    const chain = chainFor(p.symbol, spot, exp);
+    const row = chain.rows.reduce((a,b)=>Math.abs(b.K-p.strike)<Math.abs(a.K-p.strike)?b:a);
+    const price = p.type==='CE'? row.ce.price : row.pe.price;
+    return {price, source: row.liveRow ? 'nse' : 'model'};
+  }catch(e){ return {price:p.entry, source:'model'}; }
+}
+function currentOptPrice(p){ return priceInfo(p).price; }
+function priceSourceBadge(source){
+  return source==='angelone' ? {cls:'badge-broker', txt:'🔵'} : source==='nse' ? {cls:'badge-live', txt:'🟢'} : {cls:'badge-sim', txt:'🟠'};
+}
+function positionPnl(p, priceOverride){
+  const price = priceOverride!=null ? priceOverride : currentOptPrice(p);
+  return (price - p.entry) * p.qty * (p.side==='BUY'?1:-1);
+}
+function computeProfitStats(sym){
+  const all = state.portfolio.filter(p=>p.symbol===sym);
+  const open = all.filter(p=>p.status==='open');
+  const closed = all.filter(p=>p.status==='closed');
+  let invested=0, currentValue=0, unrealized=0;
+  open.forEach(p=>{
+    const price = currentOptPrice(p);
+    unrealized += positionPnl(p, price);
+    if(p.side==='BUY'){ invested += p.entry*p.qty; currentValue += price*p.qty; }
+  });
+  const realized = closed.reduce((s,p)=>s+(p.realizedPnl||0),0);
+  const retainedPnl = unrealized + realized;
+  const basis = open.reduce((s,p)=>s+(p.entry*p.qty),0);
+  const totalReturn = basis>0 ? (retainedPnl/basis*100) : null;
+  return { invested, currentValue, unrealized, retainedPnl, totalReturn, activeTrades: open.length, realized, open, closed };
+}
+function renderProfitCard(sym){
+  const s = computeProfitStats(sym);
+  return `<div class="card" style="margin-bottom:12px;">
+    <h3 style="margin-bottom:12px;">Portfolio Performance — ${SYMBOLS[sym].name}</h3>
+    <div class="grid g4">
+      <div class="card"><h3>Total Invested</h3><div class="kpi">₹${fmtInt(s.invested)}</div></div>
+      <div class="card"><h3>Current Value</h3><div class="kpi">₹${fmtInt(s.currentValue)}</div></div>
+      <div class="card"><h3>Retained P&amp;L</h3><div class="kpi" style="color:${s.retainedPnl>=0?'var(--green)':'var(--red)'}">₹${fmtInt(s.retainedPnl)}</div><div class="kpi-sub">Open ₹${fmtInt(s.unrealized)} + sold ₹${fmtInt(s.realized)}</div></div>
+      <div class="card"><h3>Total Return</h3><div class="kpi" style="color:${s.totalReturn===null?'var(--muted)':(s.totalReturn>=0?'var(--green)':'var(--red)')}">${s.totalReturn===null?'—':s.totalReturn.toFixed(1)+'%'}</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:12px;">
+      <div class="card"><h3>Active Trades</h3><div class="kpi">${s.activeTrades}</div></div>
+      <div class="card"><h3>Realized Profit</h3><div class="kpi" style="color:${s.realized>=0?'var(--green)':'var(--red)'}">₹${fmtInt(s.realized)}</div></div>
+    </div>
+    <div class="kpi-sub" style="margin-top:10px;">Retained P&amp;L combines open-position P&amp;L and booked P&amp;L from sold strikes. It remains after Sell until cleared.</div>
+    <div class="flexrow" style="margin-top:10px;"><button class="btn btn-ghost" onclick="clearTradeHistory('${sym}')">Clear ${SYMBOLS[sym].name} trades</button><button class="btn btn-danger" onclick="resetAllTradeHistory()">Reset all trades</button></div>
+  </div>`;
+}
+function pillFor(action){
+  const map={'BUY CE':'pill-buy','BUY PE':'pill-buy','SELL CE':'pill-sell','SELL PE':'pill-sell','WAIT':'pill-wait','NO TRADE':'pill-neutral'};
+  return map[action]||'pill-neutral';
+}
+
+/* =========================== RENDERERS =========================== */
+function renderHome(){
+  const sym = state.symbol; const spot = ensureLive(sym).spot;
+  const d = computeDecisionScore(sym, spot);
+  const flow = d.flow;
+  const maxPain = maxPainCalc(d.chain);
+  const heatSectors = flow.rotation;
+  return `
+  <div class="section-title">Home — ${SYMBOLS[sym].name}</div>
+  <div class="grid g4">
+    <div class="card"><h3>AI Market Score</h3><div class="kpi">${d.score.toFixed(1)}/100</div>
+      <div class="scorebar"><i style="width:${d.score}%"></i></div>
+      <div class="kpi-sub">Bias: <b style="color:${d.bias==='BULLISH'?'var(--green)':d.bias==='BEARISH'?'var(--red)':'var(--amber)'}">${d.bias}</b> · Confidence ${d.confidence.toFixed(0)}%</div></div>
+    <div class="card"><h3>Recommended Action</h3><div class="big-action"><span class="pill ${pillFor(d.action)}" style="font-size:16px;padding:6px 14px;">${d.action}</span></div>
+      <div class="kpi-sub">Risk Level: <b>${d.riskLevel}</b></div></div>
+    <div class="card"><h3>India VIX ${vixValue!=null?'(live)':'(estimate)'}</h3><div class="kpi">${(vixValue!=null? vixValue : (d.ivr.rank*0.18+11)).toFixed(2)}</div><div class="kpi-sub">IV Rank ${d.ivr.rank.toFixed(0)}% · Percentile ${d.ivr.percentile.toFixed(0)}%</div></div>
+    <div class="card"><h3>PCR / Max Pain</h3><div class="kpi">${d.pcr.toFixed(2)}</div><div class="kpi-sub">Max Pain: ₹${fmtInt(maxPain)}</div></div>
+  </div>
+  <div class="grid g4" style="margin-top:12px;">
+    <div class="card"><h3>Market Strength</h3><div class="kpi">${d.comp.trend.toFixed(0)}</div><div class="kpi-sub">Trend sub-score</div></div>
+    <div class="card"><h3>Market Breadth (proxy)</h3><div class="kpi">${(50+d.comp.priceAction/3).toFixed(0)}</div><div class="kpi-sub">Advance/decline tilt</div></div>
+    <div class="card"><h3>FII Flow (₹ Cr, sim.)</h3><div class="kpi" style="color:${flow.fiiFut>0?'var(--green)':'var(--red)'}">${flow.fiiFut>0?'+':''}${fmtInt(flow.fiiFut)}</div><div class="kpi-sub">Index futures, net</div></div>
+    <div class="card"><h3>DII Flow (₹ Cr, sim.)</h3><div class="kpi" style="color:${flow.diiCash>0?'var(--green)':'var(--red)'}">${flow.diiCash>0?'+':''}${fmtInt(flow.diiCash)}</div><div class="kpi-sub">Cash market, net</div></div>
+  </div>
+  <div class="section-title">Why this score</div>
+  <div class="card">${d.reasons.map(r=>`<div class="reason">${r}</div>`).join('')}</div>
+  <div class="section-title">Sector Rotation Heatmap</div>
+  <div class="card"><div class="heat">${heatSectors.map(s=>`<div class="heatcell" style="background:${s.chg>0?'rgba(34,197,94,'+(0.3+Math.min(.6,Math.abs(s.chg)/3))+')':'rgba(239,68,68,'+(0.3+Math.min(.6,Math.abs(s.chg)/3))+')'}">${s.sector} ${s.chg>0?'+':''}${s.chg}%</div>`).join('')}</div></div>
+  <div class="grid g2" style="margin-top:12px;">
+    <div class="card"><h3>Intraday Bias</h3><div class="kpi" style="font-size:16px;">${d.t.superTrend.dir===1?'Bullish above '+fmtInt(d.t.superTrend.line):'Bearish below '+fmtInt(d.t.superTrend.line)}</div></div>
+    <div class="card"><h3>Swing Bias</h3><div class="kpi" style="font-size:16px;">EMA20 ${d.t.close>d.t.ema.e20?'above':'below'} price · EMA50/200 ${d.t.ema.e50>d.t.ema.e200?'bullish cross':'bearish cross'}</div></div>
+  </div>
+  `;
+}
+
+function renderMarket(){
+  let rows='';
+  Object.keys(SYMBOLS).forEach(sym=>{
+    const ls = ensureLive(sym); const prevClose = liveData[sym].prevClose ?? SYMBOLS[sym].spot; const chg = (ls.spot-prevClose)/prevClose*100;
+    rows += `<tr><td>${SYMBOLS[sym].name}</td><td>${fmt(ls.spot,2)}</td><td class="${chg>=0?'chg-up':'chg-down'}">${chg>=0?'+':''}${chg.toFixed(2)}%</td><td>${getATMIV(sym).toFixed(1)}%</td></tr>`;
+  });
+  return `<div class="section-title">Live Market Overview</div>
+  <div class="card"><table><tr><th>Index</th><th>LTP</th><th>Chg%</th><th>ATM IV</th></tr>${rows}</table></div>
+  <div class="section-title">Options Volume &amp; OI Summary</div>
+  <div class="grid g3">${Object.keys(SYMBOLS).map(sym=>{ const spot=ensureLive(sym).spot; const exp=getActiveExpiry(sym); const chain=chainFor(sym,spot,exp);
+    const totV = chain.rows.reduce((a,r)=>a+r.ce.vol+r.pe.vol,0); const totOI=chain.rows.reduce((a,r)=>a+r.ce.oi+r.pe.oi,0);
+    return `<div class="card"><h3>${SYMBOLS[sym].name}</h3><div class="kpi-sub">Volume: ${fmtInt(totV)}</div><div class="kpi-sub">Total OI: ${fmtInt(totOI)}</div><div class="kpi-sub">PCR: ${pcrCalc(chain).toFixed(2)}</div></div>`; }).join('')}</div>`;
+}
+
+function renderIndexDashboard(sym){
+  const spot = ensureLive(sym).spot;
+  const t = techSnapshot(sym);
+  const d = computeDecisionScore(sym, spot);
+  return `<div class="section-title">${SYMBOLS[sym].name} Dashboard</div>
+  <div class="grid g4">
+    <div class="card"><h3>LTP</h3><div class="kpi">${fmt(spot,2)}</div></div>
+    <div class="card"><h3>EMA Stack</h3><div class="kpi-sub">9: ${fmtInt(t.ema.e9)} · 20: ${fmtInt(t.ema.e20)}<br>50: ${fmtInt(t.ema.e50)} · 200: ${fmtInt(t.ema.e200)}</div></div>
+    <div class="card"><h3>RSI(14) / ADX(14)</h3><div class="kpi">${t.rsi.toFixed(1)} / ${t.adx.toFixed(1)}</div></div>
+    <div class="card"><h3>SuperTrend</h3><div class="kpi" style="color:${t.superTrend.dir===1?'var(--green)':'var(--red)'}">${t.superTrend.dir===1?'BULLISH':'BEARISH'}</div><div class="kpi-sub">Line: ${fmtInt(t.superTrend.line)}</div></div>
+  </div>
+  <div class="grid g3" style="margin-top:12px;">
+    <div class="card"><h3>Pivot / CPR</h3><div class="kpi-sub">Pivot ${fmtInt(t.pivots.piv)} · TC ${fmtInt(t.pivots.tc)} · BC ${fmtInt(t.pivots.bc)}<br>R1 ${fmtInt(t.pivots.r1)} · S1 ${fmtInt(t.pivots.s1)}</div></div>
+    <div class="card"><h3>Support / Resistance</h3><div class="kpi-sub">Resistance: ${fmtInt(t.swing.resistance)}<br>Support: ${fmtInt(t.swing.support)}</div></div>
+    <div class="card"><h3>Bollinger(20,2)</h3><div class="kpi-sub">Upper ${fmtInt(t.bb.upper)}<br>Lower ${fmtInt(t.bb.lower)}</div></div>
+  </div>
+  <div class="section-title">AI Read</div>
+  <div class="card"><span class="pill ${pillFor(d.action)}">${d.action}</span> <span class="muted">score ${d.score.toFixed(1)} · confidence ${d.confidence.toFixed(0)}%</span>
+    ${d.reasons.slice(0,3).map(r=>`<div class="reason">${r}</div>`).join('')}</div>`;
+}
+
+function renderChain(){
+  const sym = state.symbol; const spot = ensureLive(sym).spot;
+  const exp = getActiveExpiry(sym); const chain = chainFor(sym, spot, exp);
+  let rows='';
+  chain.rows.forEach(r=>{
+    const ceB = classifyBuildup(r.ce.oiChg>0, r.ce.oiChg>0);
+    const peB = classifyBuildup(r.pe.oiChg>0, r.pe.oiChg>0);
+    rows += `<tr class="${r.atm?'atm':''}"><td>${fmtInt(r.ce.oi)}</td><td class="${r.ce.oiChg>=0?'chg-up':'chg-down'}">${r.ce.oiChg>=0?'+':''}${fmtInt(r.ce.oiChg)}</td><td>${fmtInt(r.ce.vol)}</td><td>${r.iv.toFixed(1)}</td><td>${r.ce.delta.toFixed(2)}</td><td>${fmt(r.ce.price)}</td>
+      <td style="text-align:center;font-weight:700;">${r.K}</td>
+      <td>${fmt(r.pe.price)}</td><td>${r.pe.delta.toFixed(2)}</td><td>${r.iv.toFixed(1)}</td><td>${fmtInt(r.pe.vol)}</td><td class="${r.pe.oiChg>=0?'chg-up':'chg-down'}">${r.pe.oiChg>=0?'+':''}${fmtInt(r.pe.oiChg)}</td><td>${fmtInt(r.pe.oi)}</td></tr>`;
+  });
+  return `${renderChainIntel(sym)}<div class="section-title">Option Chain — ${SYMBOLS[sym].name} · Spot ${fmt(spot,2)} · Expiry ${chain.expiryInfo.label}${chain.expiryInfo.nseConfirmed?'':' · est.'}</div>
+  <div class="kpi-sub" style="margin-bottom:4px;">${chain.expiryInfo.nseConfirmed? 'Expiry date confirmed from the live NSE option chain.' : `Expiry estimated from the exchange calendar (last Tuesday/Thursday rule) — not adjusted for trading holidays.`}</div>
+  <div class="kpi-sub" style="margin-bottom:8px;">${chain.chainIsLive? '🟢 OI/Volume/LTP from the live NSE option chain (where a strike matched).' : '🟠 Live NSE chain unreachable right now — LTP/Greeks/IV below are computed from the real spot price and real IV estimate, but OI/Volume are model-estimated (liquidity-decay curve), not exchange data.'}</div>
+  <div class="card" style="overflow-x:auto;"><table>
+  <tr><th colspan="6">CALLS</th><th>Strike</th><th colspan="6">PUTS</th></tr>
+  <tr><th>OI</th><th>Chg OI</th><th>Vol</th><th>IV%</th><th>Δ</th><th>LTP</th><th></th><th>LTP</th><th>Δ</th><th>IV%</th><th>Vol</th><th>Chg OI</th><th>OI</th></tr>
+  ${rows}</table></div>`;
+}
+
+function strikeFullName(role, b){
+  const type = role.includes('CE')?'CE':'PE';
+  return `${b.symbol} ${b.expiryInfo.label} ${b.strike} ${type}`;
+}
+function starsFor(score){
+  if(score>=80) return {stars:'★★★★★', label:'Strong Buy', cls:'pill-buy'};
+  if(score>=65) return {stars:'★★★★', label:'Buy', cls:'pill-buy'};
+  if(score>=50) return {stars:'★★★', label:'Watch', cls:'pill-wait'};
+  return {stars:'★★', label:'Avoid', cls:'pill-neutral'};
+}
+const strikeSelectorCache = {}; // sym -> {best, atSpot} — snapshot of what's currently on screen
+function renderStrikes(){
+  const sym=state.symbol; const spot = ensureLive(sym).spot;
+  const best = bestStrikes(sym, spot);
+  strikeSelectorCache[sym] = { best, atSpot: spot }; // freeze this exact snapshot for Add to Sandbox
+  refreshAngelLtpForStrikes(sym, best);
+  const labels = {buyCE:'BUY CE',buyPE:'BUY PE',sellCE:'SELL CE',sellPE:'SELL PE'};
+  const intel = chainIntel(sym);
+  const d = computeDecisionScore(sym, spot);
+  const signalColor = d.action.includes('CE')? 'var(--green)' : d.action.includes('PE')? 'var(--red)' : 'var(--amber)';
+  const badgeFor = b => b.liveSource==='angelone'
+      ? {cls:'badge-broker', txt:'🔵 ANGEL ONE LIVE'}
+      : b.isLive ? {cls:'badge-live', txt:'🟢 NSE LIVE'} : {cls:'badge-sim', txt:'🟠 MODEL STRIKE'};
+  const dir = intel.bias==='BEARISH' ? 'BEAR' : 'BULL';
+  const checks = institutionalChecks(sym, dir);
+  return `<div class="section-title">Smart Strike Selector — ${SYMBOLS[sym].name}</div>
+  <div class="card" style="margin-bottom:12px;border-left:3px solid ${signalColor};">
+    <div class="flexrow"><h3 style="margin:0;">Signal: <span style="color:${signalColor}">${d.action}</span></h3>
+      <span class="muted">Regime ${intel.bias} · Confidence ${d.confidence.toFixed(0)}% · Risk ${d.riskLevel}</span></div>
+    <div class="flexrow" style="margin-top:8px;">
+      <span class="tag">PCR ${intel.pcr.toFixed(2)}</span><span class="tag">Max Pain ${fmtInt(intel.maxPain)}</span>
+      <span class="tag">IV Rank ${intel.ivr.rank.toFixed(0)}%</span><span class="tag">VWAP ${fmt(intel.t.vwap,0)}</span>
+      <span class="tag">Support ${fmtInt(intel.supportZone)}</span><span class="tag">Resistance ${fmtInt(intel.resistanceZone)}</span>
+      <span class="tag">Gamma wall ${fmtInt(intel.gammaWall)}</span></div>
+  </div>
+  ${renderChecklist(checks, dir)}
+  <div class="section-title">Playbook by horizon</div>
+  <div class="card" style="margin-bottom:12px;">${playbookFor(sym, intel).map(x=>`<div class="reason"><b>${x.horizon}:</b> ${x.plan}</div>`).join('')}</div>
+  <div class="grid g2">${Object.keys(best).map(role=>{ const b=best[role]; const isBuy=role.startsWith('buy'); const bd=badgeFor(b); const st=starsFor(b.score);
+    return `<div class="card"><h3>${strikeFullName(role,b)} ${chartIconLink(sym, {strike:b.strike, type: role.includes('CE')?'CE':'PE', expiryDate: b.expiryInfo.date})}</h3>
+      <div class="flexrow"><span class="pill ${isBuy?'pill-buy':'pill-sell'}">${labels[role]}</span><span class="badge ${bd.cls}" style="font-size:9px;">${bd.txt}</span>
+        <span class="pill ${st.cls}" style="font-size:11px;">${st.stars} ${st.label}</span></div>
+      <div class="kpi" style="margin-top:8px;">₹${fmt(b.premium)}</div>
+      <div class="kpi-sub">${b.liveSource==='angelone'? 'Live broker LTP (Angel One SmartAPI)' : b.isLive? 'Live NSE LTP':'Model price (real spot + real IV)'} · at spot ${fmt(spot,2)}</div>
+      <div class="kpi-sub">Strike score <b>${b.score.toFixed(0)}/100</b> · Confidence ${b.confidence.toFixed(0)}% · Prob. ITM (delta proxy) ${b.probITM}%</div>
+      <div class="scorebar"><i style="width:${b.score}%"></i></div>
+      <div class="flexrow" style="margin-top:6px;">${Object.entries(b.breakdown).map(([k,v])=>`<span class="tag">${k} ${v.got.toFixed(0)}/${v.max}</span>`).join('')}</div>
+      <div class="flexrow" style="margin-top:6px;">${b.tags.map(t=>`<span class="tag" style="border-color:var(--accent);color:var(--accent);">${t}</span>`).join('')}</div>
+      <hr class="divider">
+      <div class="flexrow"><span class="tag">Entry ₹${fmt(b.premium)}</span><span class="tag">SL ₹${fmt(b.plan.sl)}</span><span class="tag">T1 ₹${fmt(b.plan.t1)}</span><span class="tag">T2 ₹${fmt(b.plan.t2)}</span><span class="tag">R:R ${b.plan.rr}</span></div>
+      <div class="kpi-sub" style="margin-top:6px;">Suggested qty: ${b.plan.qty} (${b.plan.lots} lot${b.plan.lots>1?'s':''}) · Max loss ≈ ₹${fmtInt(b.plan.maxLoss)}</div>
+      <div class="kpi-sub">Why: ${b.reasons.join(' · ')}</div>
+      <button class="btn" style="margin-top:10px;" onclick="addPositionForRole('${role}')">+ Add to Sandbox Trading (₹${fmt(b.premium)})</button>
+    </div>`; }).join('')}</div>
+  <div class="disclaimer" style="margin:16px 0 0 0;">Strike scores blend OI strength (20), OI change (15), PCR (10), delta fit (10), IV rank (10), VWAP confirmation (10), trend alignment (10), Max Pain distance (10), volume (10) and gamma support (5), normalised to 100. 🔵 = live Angel One LTP · 🟢 = live NSE chain row · 🟠 = model price from real spot + real IV. Adding a strike books the exact price shown here and mirrors it straight into Sandbox Trading. Probability-of-ITM is a delta approximation, not a guarantee.</div>`;
+}
+function renderChecklist(checks, dir){
+  const passed = checks.filter(c=>c.pass).length;
+  const ok = passed>=8;
+  return `<div class="card" style="margin-bottom:12px;border-left:3px solid ${ok?'var(--green)':'var(--amber)'};">
+    <div class="flexrow"><h3 style="margin:0;">Institutional Entry Engine — ${dir==='BULL'?'Bullish':'Bearish'} case</h3>
+      <span class="pill ${ok?'pill-buy':'pill-wait'}">${passed}/12 confirmations · ${ok?'ENTRY QUALIFIED':'NO TRADE (need 8/12)'}</span></div>
+    <div class="grid g2" style="margin-top:10px;">${checks.map(c=>`<div class="kpi-sub">${c.pass?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>'} <b>${c.name}</b> — ${c.detail}</div>`).join('')}</div>
+  </div>`;
+}
+function playbookFor(sym, intel){
+  const b = intel.bias;
+  if(b==='BULLISH') return [
+    {horizon:'Intraday buying', plan:`ATM ${intel.atmStrike} CE or slight ITM ${intel.atmStrike-intel.step} CE (delta 0.50–0.60), trail above VWAP ${fmt(intel.t.vwap,0)}.`},
+    {horizon:'Swing', plan:`Slight ITM CE with 2–5 session hold; invalidate below CPR bottom ${fmt(intel.t.pivots.bc,0)}.`},
+    {horizon:'Weekly selling', plan:`Sell ${intel.supportZone} PE (delta 0.15–0.25) against the put wall; theta positive.`},
+    {horizon:'Spread', plan:`Bull Put Spread ${intel.supportZone} / ${intel.supportZone-2*intel.step} — defined risk, positive theta.`},
+    {horizon:'Expiry day', plan:`Fade moves toward Max Pain ${fmtInt(intel.maxPain)}; avoid buying premium after 14:30.`}];
+  if(b==='BEARISH') return [
+    {horizon:'Intraday buying', plan:`ATM ${intel.atmStrike} PE or slight ITM ${intel.atmStrike+intel.step} PE (delta 0.50–0.60), trail below VWAP ${fmt(intel.t.vwap,0)}.`},
+    {horizon:'Swing', plan:`Slight ITM PE, invalidate above CPR top ${fmt(intel.t.pivots.tc,0)}.`},
+    {horizon:'Weekly selling', plan:`Sell ${intel.resistanceZone} CE (delta 0.15–0.25) against the call wall.`},
+    {horizon:'Spread', plan:`Bear Call Spread ${intel.resistanceZone} / ${intel.resistanceZone+2*intel.step}.`},
+    {horizon:'Expiry day', plan:`Sell rallies into ${fmtInt(intel.maxPain)} Max Pain; keep SL above the gamma wall ${fmtInt(intel.gammaWall)}.`}];
+  return [
+    {horizon:'Intraday', plan:`Range ${fmtInt(intel.supportZone)}–${fmtInt(intel.resistanceZone)}; buy premium only on a decisive break with volume.`},
+    {horizon:'Non-directional', plan:`Iron Condor ${intel.supportZone}/${intel.resistanceZone} wings, or Iron Fly at ${intel.atmStrike} if IV Rank ${intel.ivr.rank.toFixed(0)}% stays elevated.`},
+    {horizon:'Weekly selling', plan:`Short Strangle ${intel.supportZone} PE / ${intel.resistanceZone} CE with 0.15–0.20 delta legs.`},
+    {horizon:'Expiry', plan:`Max Pain pin at ${fmtInt(intel.maxPain)} — theta strategies favoured over directional buying.`}];
+}
+
+function renderInstitutional(){
+  const sym=state.symbol; const flow = institutionalFlow(sym);
+  return `<div class="section-title">Institutional Flow (simulated) — ${SYMBOLS[sym].name}</div>
+  <div class="grid g4">
+    <div class="card"><h3>FII Futures Position</h3><div class="kpi" style="color:${flow.fiiFut>0?'var(--green)':'var(--red)'}">₹${fmtInt(flow.fiiFut)} Cr</div></div>
+    <div class="card"><h3>DII Cash Activity</h3><div class="kpi" style="color:${flow.diiCash>0?'var(--green)':'var(--red)'}">₹${fmtInt(flow.diiCash)} Cr</div></div>
+    <div class="card"><h3>FII Cash Flow</h3><div class="kpi" style="color:${flow.fiiCash>0?'var(--green)':'var(--red)'}">₹${fmtInt(flow.fiiCash)} Cr</div></div>
+    <div class="card"><h3>Delivery %</h3><div class="kpi">${flow.delivery}%</div></div>
+  </div>
+  <div class="section-title">Sector Rotation</div>
+  <div class="card">${flow.rotation.map(s=>`<div class="watchrow"><span>${s.sector}</span><span class="${s.chg>=0?'chg-up':'chg-down'}">${s.chg>=0?'+':''}${s.chg}%</span></div>`).join('')}</div>
+  <div class="kpi-sub" style="margin-top:8px;">Note: FII/DII, delivery %, and block/bulk deal figures are simulated in offline mode. Wire a real NSE/NSDL feed via a server-side proxy for live data — see the skill's data-sources reference.</div>`;
+}
+
+function renderGreeks(){
+  const sym=state.symbol; const spot = ensureLive(sym).spot; const exp=getActiveExpiry(sym); const chain=chainFor(sym,spot,exp);
+  let rows='';
+  chain.rows.forEach(r=>{ rows+=`<tr class="${r.atm?'atm':''}"><td>${r.K}</td>
+    <td>${r.ce.delta.toFixed(3)}</td><td>${r.ce.gamma.toFixed(5)}</td><td>${r.ce.theta.toFixed(2)}</td><td>${r.ce.vega.toFixed(2)}</td>
+    <td>${r.pe.delta.toFixed(3)}</td><td>${r.pe.gamma.toFixed(5)}</td><td>${r.pe.theta.toFixed(2)}</td><td>${r.pe.vega.toFixed(2)}</td></tr>`; });
+  return `<div class="section-title">Greeks Dashboard — ${SYMBOLS[sym].name}</div>
+  <div class="card" style="overflow-x:auto;"><table><tr><th>Strike</th><th colspan="4">CALL</th><th colspan="4">PUT</th></tr>
+  <tr><th></th><th>Δ</th><th>Γ</th><th>Θ</th><th>Vega</th><th>Δ</th><th>Γ</th><th>Θ</th><th>Vega</th></tr>${rows}</table></div>`;
+}
+
+function renderOI(){
+  const sym=state.symbol; const spot = ensureLive(sym).spot; const exp=getActiveExpiry(sym); const chain=chainFor(sym,spot,exp);
+  const gexProfile = gammaExposureProfile(chain);
+  const flip = gammaFlip(gexProfile);
+  const maxOICE = Math.max(...chain.rows.map(r=>r.ce.oi));
+  const maxOIPE = Math.max(...chain.rows.map(r=>r.pe.oi));
+  return `<div class="section-title">Open Interest Analytics — ${SYMBOLS[sym].name}</div>
+  <div class="grid g3">
+    <div class="card"><h3>PCR</h3><div class="kpi">${pcrCalc(chain).toFixed(2)}</div></div>
+    <div class="card"><h3>Max Pain</h3><div class="kpi">₹${fmtInt(maxPainCalc(chain))}</div></div>
+    <div class="card"><h3>Gamma Flip</h3><div class="kpi">${flip?'₹'+fmtInt(flip):'—'}</div></div>
+  </div>
+  <div class="section-title">OI Heatmap (Calls)</div>
+  <div class="card"><div class="heat">${chain.rows.map(r=>`<div class="heatcell" title="${r.K}" style="background:rgba(62,166,255,${0.2+0.7*(r.ce.oi/maxOICE)})">${r.K}</div>`).join('')}</div></div>
+  <div class="section-title">OI Heatmap (Puts)</div>
+  <div class="card"><div class="heat">${chain.rows.map(r=>`<div class="heatcell" title="${r.K}" style="background:rgba(239,68,68,${0.2+0.7*(r.pe.oi/maxOIPE)})">${r.K}</div>`).join('')}</div></div>
+  <div class="section-title">OI Build-up Classification</div>
+  <div class="card" style="overflow-x:auto;"><table><tr><th>Strike</th><th>Call OI Chg</th><th>Call Signal</th><th>Put OI Chg</th><th>Put Signal</th></tr>
+  ${chain.rows.map(r=>{ const cb=classifyBuildup(r.ce.oiChg>0,true); const pb=classifyBuildup(r.pe.oiChg<0,true);
+    return `<tr><td>${r.K}</td><td class="${r.ce.oiChg>=0?'chg-up':'chg-down'}">${fmtInt(r.ce.oiChg)}</td><td><span class="pill ${cb.cls}">${cb.label}</span></td>
+    <td class="${r.pe.oiChg>=0?'chg-up':'chg-down'}">${fmtInt(r.pe.oiChg)}</td><td><span class="pill ${pb.cls}">${pb.label}</span></td></tr>`; }).join('')}
+  </table></div>`;
+}
+
+function renderIV(){
+  const sym=state.symbol; const spot = ensureLive(sym).spot; const exp=getActiveExpiry(sym); const chain=chainFor(sym,spot,exp);
+  const atmIV = chain.rows.find(r=>r.atm)?.iv || getATMIV(sym);
+  const ivr = ivRankCalc(sym, atmIV);
+  const maxIV = Math.max(...chain.rows.map(r=>r.iv));
+  return `<div class="section-title">IV Analytics — ${SYMBOLS[sym].name}</div>
+  <div class="grid g3">
+    <div class="card"><h3>ATM IV</h3><div class="kpi">${atmIV.toFixed(2)}%</div></div>
+    <div class="card"><h3>IV Rank</h3><div class="kpi">${ivr.rank.toFixed(0)}%</div></div>
+    <div class="card"><h3>IV Percentile</h3><div class="kpi">${ivr.percentile.toFixed(0)}%</div></div>
+  </div>
+  <div class="section-title">Volatility Smile</div>
+  <div class="card"><div class="heat">${chain.rows.map(r=>`<div class="heatcell" style="background:rgba(124,92,255,${0.25+0.6*(r.iv/maxIV)})">${r.iv.toFixed(1)}</div>`).join('')}</div>
+  <div class="kpi-sub" style="margin-top:6px;">Strikes ${chain.rows[0].K} → ${chain.rows[chain.rows.length-1].K}</div></div>`;
+}
+
+function svgPayoff(curve, S){
+  const w=760,h=260,pad=36;
+  const xs=curve.xs, ys=curve.ys;
+  const minY=Math.min(...ys,0), maxY=Math.max(...ys,0);
+  const minX=Math.min(...xs), maxX=Math.max(...xs);
+  const xScale = x => pad + (x-minX)/(maxX-minX)*(w-2*pad);
+  const yScale = y => h-pad - (y-minY)/(maxY-minY||1)*(h-2*pad);
+  const zeroY = yScale(0);
+  let path = xs.map((x,i)=> (i===0?'M':'L')+xScale(x).toFixed(1)+','+yScale(ys[i]).toFixed(1)).join(' ');
+  const spotX = xScale(S);
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:${w}px;">
+    <line x1="${pad}" y1="${zeroY}" x2="${w-pad}" y2="${zeroY}" stroke="#2a3547"/>
+    <line x1="${spotX}" y1="${pad}" x2="${spotX}" y2="${h-pad}" stroke="#3ea6ff" stroke-dasharray="4,3"/>
+    <path d="${path}" fill="none" stroke="#22c55e" stroke-width="2"/>
+    <text x="${spotX+4}" y="${pad+10}" fill="#3ea6ff">Spot</text>
+  </svg>`;
+}
+
+function renderStrategy(){
+  const sym=state.symbol; const spot=ensureLive(sym).spot; const cfg=SYMBOLS[sym];
+  const active = state.activeStrategy || 'long_straddle';
+  const exp = getActiveExpiry(sym);
+  const legs = STRATEGIES[active](spot, cfg.step, exp.days/365).map(l=>({...l, K:Math.round(l.K/cfg.step)*cfg.step}));
+  const curve = payoffCurve(legs, spot, getATMIV(sym), exp.days/365, 0.08);
+  const engine = institutionalStrategyEngine(sym);
+  const recs = engine.recommendations;
+  const top = recs[0];
+  return `<div class="section-title">Auto Strategy Generator — ${SYMBOLS[sym].name}</div>
+  <div class="card" style="margin-bottom:12px;border-left:3px solid var(--accent);">
+    <div class="flexrow"><h3 style="margin:0;">Institutional Market Regime</h3><span class="pill ${engine.sentiment==='Bullish'?'pill-buy':engine.sentiment==='Bearish'?'pill-sell':'pill-wait'}">${engine.regime}</span><span class="pill pill-neutral">${engine.sentiment}</span><span class="muted">Updated ${new Date(engine.asOf).toLocaleTimeString('en-IN',{hour12:false})}</span></div>
+    <div class="flexrow" style="margin-top:9px;">${engine.factors.map(f=>`<span class="tag">${f}</span>`).join('')}</div>
+    <div class="kpi-sub" style="margin-top:8px;">The recommendation is recalculated on every Strategy Builder refresh from price action, multi-horizon trend proxies, VWAP/CPR, OI and ΔOI, PCR, Max Pain, IV rank/percentile, Greeks, volume, gamma/OI walls, expected move, historical volatility and time-to-expiry. No static random selection is used.</div>
+  </div>
+  <div class="grid g2" style="margin-bottom:14px;">${recs.map((r,i)=>`<div class="card" style="border-left:3px solid ${i===0?'var(--accent)':'var(--border)'};">
+    <div class="flexrow"><h3 style="margin:0;">${i===0?'★ ':''}${r.name}</h3><span class="pill ${r.confidence>=80?'pill-buy':r.confidence>=65?'pill-wait':'pill-neutral'}">Confidence ${r.confidence}%</span><span class="tag">POP ${r.pop}%</span></div>
+    <div class="kpi-sub" style="margin-top:6px;">${r.horizon} · ${r.legsText}</div>
+    <div class="flexrow" style="margin-top:8px;"><span class="tag">Risk ${r.riskLabel}</span><span class="tag">Max profit ${r.maxProfitText}</span><span class="tag">Max loss ${r.maxLossText}</span><span class="tag">R:R ${r.rrText}</span></div>
+    <div class="kpi-sub" style="margin-top:6px;">Breakeven: ${r.breakevenText}</div>
+    <div style="margin-top:8px;">${r.reasons.map(x=>`<div class="reason">${x}</div>`).join('')}</div>
+    <div class="flexrow" style="margin-top:8px;"><button class="btn" onclick="setStrategy('${r.key}')">Load payoff</button><button class="btn btn-ghost" onclick="addStrategyToSandbox('${r.key}',${r.confidence})">+ Add strategy to Sandbox</button></div>
+  </div>`).join('')}</div>
+  <div class="section-title">Strategy Builder</div>
+  <div class="card">
+    <div class="flexrow">${Object.keys(STRATEGIES).map(k=>`<button class="btn ${k===active?'':'btn-ghost'}" onclick="setStrategy('${k}')">${STRATEGY_NAMES[k]}</button>`).join('')}</div>
+    <div style="margin-top:14px;">${svgPayoff(curve, spot)}</div>
+    <div class="kpi-sub">Net premium ${curve.netPremium>=0?'received':'paid'}: ₹${fmt(Math.abs(curve.netPremium))} · Legs: ${legs.map(l=>`${l.side>0?'Long':'Short'} ${l.qty}x ${l.type} ${l.K}`).join(', ')}</div>
+    <button class="btn" style="margin-top:12px;" onclick="addStrategyToSandbox('${active}',null)">+ Add ${STRATEGY_NAMES[active]} to Sandbox Trading</button>
+  </div>
+  <div class="disclaimer" style="margin:16px 0 0 0;">Model output is probability-weighted decision support, not a guarantee. POP and payoff estimates use the current chain/model distribution and may differ materially during gaps, events, illiquidity or volatility shocks. Covered Call is intentionally excluded for cash-settled index options unless an equivalent underlying hedge is present.</div>`;
+}
+function setStrategy(k){ state.activeStrategy=k; saveState(); renderActive(); }
+
+/* =========================== SANDBOX TRADING (merged Entry + Exit) ======= */
+function dayKey(ts){ const d=new Date(ts); return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate(); }
+function todaysRealized(){
+  const k = dayKey(Date.now());
+  return state.portfolio.filter(p=>p.status==='closed' && p.exitDate && dayKey(p.exitDate)===k)
+    .reduce((a,p)=>a+(p.realizedPnl||0),0);
+}
+function openUnrealized(){
+  return state.portfolio.filter(p=>p.status==='open').reduce((a,p)=>a+positionPnl(p),0);
+}
+function dashboardStats(){
+  const all = state.portfolio;
+  const open = all.filter(p=>p.status==='open');
+  const closed = all.filter(p=>p.status==='closed');
+  const wins = closed.filter(p=>(p.realizedPnl||0)>0);
+  const winPct = closed.length? wins.length/closed.length*100 : 0;
+  const byStrategy = {};
+  closed.forEach(p=>{ const k=p.groupName||'Single leg'; byStrategy[k]=(byStrategy[k]||0)+(p.realizedPnl||0); });
+  const bestStrategy = Object.keys(byStrategy).sort((a,b)=>byStrategy[b]-byStrategy[a])[0] || '—';
+  const byIndex = {};
+  closed.forEach(p=>{ byIndex[p.symbol]=(byIndex[p.symbol]||0)+(p.realizedPnl||0); });
+  const bestIndex = Object.keys(byIndex).sort((a,b)=>byIndex[b]-byIndex[a])[0] || '—';
+  const holdMs = closed.filter(p=>p.exitDate&&p.entryTs).map(p=>p.exitDate-p.entryTs);
+  const avgHold = holdMs.length? holdMs.reduce((a,b)=>a+b,0)/holdMs.length : 0;
+  const capitalUsed = open.reduce((a,p)=> a + (p.side==='BUY'? p.entry*p.qty : p.entry*p.qty*0.2), 0);
+  const thetaSaved = closed.filter(p=>p.exitReason && /Theta|Time|Expiry/i.test(p.exitReason)).reduce((a,p)=>a+Math.max(0,p.realizedPnl||0),0);
+  return {open, closed, winPct, lossPct:closed.length?100-winPct:0, bestStrategy, bestIndex, avgHold,
+    capitalUsed, marginLeft: Math.max(0, state.capital-capitalUsed), thetaSaved,
+    todayPnl: todaysRealized()+openUnrealized()};
+}
+function fmtDur(ms){ if(!ms) return '—'; const m=Math.round(ms/60000); if(m<60) return m+'m'; const h=Math.floor(m/60); return h+'h '+(m%60)+'m'; }
+function renderDashboardCards(){
+  const s = dashboardStats(); const c = riskCfg();
+  const card = (t,v,sub,col)=>`<div class="card"><h3>${t}</h3><div class="kpi" ${col?`style="color:${col}"`:''}>${v}</div><div class="kpi-sub">${sub||''}</div></div>`;
+  return `<div class="grid g4">
+    ${card("Today's P&L", '₹'+fmtInt(s.todayPnl), 'Booked + open', s.todayPnl>=0?'var(--green)':'var(--red)')}
+    ${card('Active Trades', s.open.length, s.closed.length+' closed')}
+    ${card('Winning %', s.winPct.toFixed(0)+'%', 'Loss '+s.lossPct.toFixed(0)+'%', s.winPct>=50?'var(--green)':'var(--red)')}
+    ${card('Auto Sell', c.autoSell?'ON':'OFF', c.autoSell?`Target ${c.targetPct}% · SL ${c.slPct}% · Trail ${c.trailPct}%`:'Enable in Settings', c.autoSell?'var(--green)':'var(--muted)')}
+  </div>
+  <div class="grid g4" style="margin-top:12px;">
+    ${card('Best Strategy', s.bestStrategy, 'By booked P&L')}
+    ${card('Most Profitable Index', s.bestIndex, 'By booked P&L')}
+    ${card('Avg Holding Time', fmtDur(s.avgHold), 'Closed trades')}
+    ${card('Theta Decay Saved', '₹'+fmtInt(s.thetaSaved), 'Time-based exits')}
+  </div>
+  <div class="grid g4" style="margin-top:12px;">
+    ${card('Capital Used', '₹'+fmtInt(s.capitalUsed), 'Premium + margin proxy')}
+    ${card('Margin Remaining', '₹'+fmtInt(s.marginLeft), 'Of ₹'+fmtInt(state.capital))}
+    ${card('Open Positions', s.open.length, s.open.map(p=>p.strike+p.type).slice(0,4).join(', ')||'—')}
+    ${card('Daily Caps', '₹'+fmtInt(c.maxDailyLoss)+' / ₹'+fmtInt(c.maxDailyProfit), 'Max loss / max profit')}
+  </div>`;
+}
+function timelineHtml(p){
+  return `<div class="kpi-sub" style="margin-top:4px;">${(p.timeline||[]).map(e=>`<div>${new Date(e.ts).toLocaleTimeString('en-IN',{hour12:false})} · <b>${e.event}</b>${e.note?' — '+e.note:''}</div>`).join('')}</div>`;
+}
+function posRowHtml(p, i, indent){
+  const info = p.status==='open'? priceInfo(p) : {price:p.exitPrice, source:'model'};
+  const price = info.price!=null? info.price : p.entry;
+  const bd = priceSourceBadge(info.source);
+  const pnl = p.status==='open'? positionPnl(p, price) : (p.realizedPnl||0);
+  const pnlPct = p.entry? pnl/(p.entry*p.qty)*100 : 0;
+  return `<tr>
+    <td>${indent||''}${p.symbol} ${p.expiryLabel||''} ${p.strike}${p.type} ${chartIconLink(p.symbol,{strike:p.strike,type:p.type,expiryDate:p.expiryDate? new Date(p.expiryDate):null})}
+      <div class="kpi-sub">${p.id} · ${p.source||'Manual'}${p.confidence?' · conf '+Math.round(p.confidence)+'%':''}</div></td>
+    <td>${p.side}</td><td>${p.qty}</td>
+    <td>${fmt(p.entry)}<div class="kpi-sub">${p.entryTs? new Date(p.entryTs).toLocaleString('en-IN',{hour12:false}):''}</div></td>
+    <td>${p.status==='open'? `<span class="badge ${bd.cls}" style="font-size:9px;">${bd.txt}</span> ${fmt(price)}` : fmt(price)}</td>
+    <td class="${pnl>=0?'chg-up':'chg-down'}">₹${fmtInt(pnl)}<div class="kpi-sub">${pnlPct>=0?'+':''}${pnlPct.toFixed(1)}%</div></td>
+    <td><span class="tag">T ${fmt(p.t2)}</span><span class="tag">SL ${fmt(p.sl)}</span>${p.trailSl?`<span class="tag">Trail ${fmt(p.trailSl)}</span>`:''}<div class="kpi-sub">R:R ${p.rr||state.rrRatio}</div></td>
+    <td>${p.status==='open'? `<span class="pill ${pillFor('WAIT')}">${(exitCheck(p)||{reason:'HOLD'}).reason}</span>`
+        : `<span class="pill pill-neutral">${p.exitReason||'Closed'}</span><div class="kpi-sub">${p.exitDate? new Date(p.exitDate).toLocaleString('en-IN',{hour12:false}):''}</div>`}</td>
+    <td>${p.status==='open'? `<button class="btn btn-danger" onclick="closePosition(${i},'Manual Exit','MANUAL')">Sell</button>` : `<button class="btn btn-ghost" onclick="removePosition(${i})">Delete</button>`}
+      <button class="btn btn-ghost" onclick="toggleTimeline('${p.id}')">Timeline</button>
+      ${state.sandboxCollapsed && state.sandboxCollapsed['tl_'+p.id]? timelineHtml(p):''}</td>
+  </tr>`;
+}
+function toggleTimeline(id){ state.sandboxCollapsed = state.sandboxCollapsed||{}; const k='tl_'+id; state.sandboxCollapsed[k]=!state.sandboxCollapsed[k]; saveState(); renderActive(); }
+function toggleGroup(gid){ state.sandboxCollapsed = state.sandboxCollapsed||{}; state.sandboxCollapsed[gid]=!state.sandboxCollapsed[gid]; saveState(); renderActive(); }
+function positionsTable(list, emptyMsg){
+  if(!list.length) return `<div class="card muted">${emptyMsg}</div>`;
+  const groups = {}; const singles = [];
+  list.forEach(p=>{ if(p.groupId){ (groups[p.groupId]=groups[p.groupId]||[]).push(p); } else singles.push(p); });
+  let body='';
+  Object.keys(groups).forEach(gid=>{
+    const legs = groups[gid];
+    const collapsed = state.sandboxCollapsed && state.sandboxCollapsed[gid];
+    const gPnl = legs.reduce((a,p)=> a + (p.status==='open'? positionPnl(p) : (p.realizedPnl||0)), 0);
+    body += `<tr style="background:var(--panel2);"><td colspan="9">
+      <b style="cursor:pointer;" onclick="toggleGroup('${gid}')">${collapsed?'▸':'▾'} ${legs[0].groupName} (${legs.length} legs)</b>
+      <span class="pill ${gPnl>=0?'pill-buy':'pill-sell'}" style="margin-left:8px;">Strategy P&amp;L ₹${fmtInt(gPnl)}</span>
+      <button class="btn btn-danger" style="margin-left:8px;" onclick="closeGroup('${gid}')">Close strategy</button></td></tr>`;
+    if(!collapsed) legs.forEach((p,k)=>{ body += posRowHtml(p, state.portfolio.indexOf(p), (k===legs.length-1?'└── ':'├── ')); });
+  });
+  singles.forEach(p=>{ body += posRowHtml(p, state.portfolio.indexOf(p), ''); });
+  return `<div class="card" style="overflow-x:auto;"><table>
+    <tr><th>Position</th><th>Side</th><th>Qty</th><th>Entry</th><th>LTP / Exit</th><th>P&amp;L</th><th>Risk</th><th>Signal / Reason</th><th>Actions</th></tr>${body}</table></div>`;
+}
+function renderSandbox(){
+  const sym = state.symbol;
+  refreshAngelLtpForPositions(state.portfolio);
+  autoSellTick();
+  const spot = ensureLive(sym).spot;
+  const d = computeDecisionScore(sym, spot);
+  const intel = chainIntel(sym);
+  const checks = institutionalChecks(sym, intel.bias==='BEARISH'?'BEAR':'BULL');
+  const all = state.portfolio;
+  const open = all.filter(p=>p.status==='open');
+  const closed = all.filter(p=>p.status==='closed').sort((a,b)=>(b.exitDate||0)-(a.exitDate||0));
+  const recentStrikes = open.filter(p=>p.source==='Smart Strike Selector').slice(-6);
+  const recentStrategy = open.filter(p=>p.source==='Strategy Builder');
+  const c = riskCfg();
+  return `<div class="section-title">Sandbox Trading — unified entry, exit &amp; portfolio monitor</div>
+  ${renderDashboardCards()}
+  <div class="card" style="margin-top:12px;">
+    <div class="flexrow"><h3 style="margin:0;">Auto Sell Engine</h3>
+      <label class="flexrow" style="gap:6px;"><input type="checkbox" ${c.autoSell?'checked':''} onchange="toggleAutoSell(this.checked)">
+      <b style="color:${c.autoSell?'var(--green)':'var(--muted)'}">AUTO SELL ${c.autoSell?'ON':'OFF'}</b></label>
+      <span class="muted">Monitors every saved strike each refresh tick (${Math.max(5,state.refreshSec)}s)</span></div>
+    <div class="flexrow" style="margin-top:8px;">${['Premium Target','Stop Loss','Trailing SL','Time Exit','VWAP Breakdown','PCR Reversal','OI Reversal','Delta Drop','Gamma Flip','Trend Change','Expiry Rule','Support/Resistance Break','Max Daily Loss','Max Daily Profit'].map(r=>`<span class="tag">${r}</span>`).join('')}</div>
+  </div>
+  <div class="section-title">Entry Signal — ${SYMBOLS[sym].name}</div>
+  <div class="card" style="margin-bottom:12px;">
+    <span class="pill ${pillFor(d.action)}" style="font-size:14px;">${d.action}</span>
+    <div class="kpi-sub" style="margin-top:8px;">Score ${d.score.toFixed(1)} · Confidence ${d.confidence.toFixed(0)}% · Risk ${d.riskLevel} · PCR ${intel.pcr.toFixed(2)} · Max Pain ${fmtInt(intel.maxPain)}</div>
+    ${d.reasons.slice(0,4).map(r=>`<div class="reason">${r}</div>`).join('')}
+  </div>
+  ${renderChecklist(checks, intel.bias==='BEARISH'?'BEAR':'BULL')}
+  <div class="section-title">Recent Smart Strikes</div>
+  ${positionsTable(recentStrikes, 'No strikes added from the Smart Strike Selector yet.')}
+  <div class="section-title">Recent Strategy Builder Trades</div>
+  ${positionsTable(recentStrategy, 'No strategies deployed from the Strategy Builder yet.')}
+  <div class="section-title">Active Positions</div>
+  ${positionsTable(open, 'No active positions.')}
+  <div class="section-title">Closed Positions &amp; Trade History</div>
+  ${positionsTable(closed.slice(0,40), 'No closed trades yet.')}
+  <div class="section-title">Performance</div>
+  ${renderProfitCard(sym)}
+  <div class="disclaimer">Sandbox Trading is a paper-trading monitor: strikes added from the Smart Strike Selector and strategies deployed from the Strategy Builder appear here automatically, are priced against live/model LTP, and are auto-exited by the rules above when AUTO SELL is ON. Every exit records its reason and timestamp on the trade timeline.</div>`;
+}
+
+function renderPortfolio(){
+  const sym=state.symbol;
+  refreshAngelLtpForPositions(state.portfolio); // best-effort live overlay, throttled internally per contract
+  const rows = state.portfolio.map((p,i)=>{
+    let ltpCell, pnlCell;
+    if(p.status==='open'){
+      const info = priceInfo(p); const bd = priceSourceBadge(info.source);
+      const pnl = positionPnl(p, info.price);
+      ltpCell = `<span class="badge ${bd.cls}" style="font-size:9px;margin-right:4px;">${bd.txt}</span>${fmt(info.price)}`;
+      pnlCell = `<span class="${pnl>=0?'chg-up':'chg-down'}">₹${fmtInt(pnl)}</span>`;
+    } else {
+      ltpCell = p.exitPrice!=null ? fmt(p.exitPrice) : '—';
+      pnlCell = p.realizedPnl!=null ? `<span class="${p.realizedPnl>=0?'chg-up':'chg-down'}">₹${fmtInt(p.realizedPnl)}</span>` : '—';
+    }
+    return `<tr><td>${p.symbol} ${p.expiryLabel||''} ${p.strike}${p.type} ${p.isLiveEntry?'🟢':'🟠'} ${chartIconLink(p.symbol, {strike:p.strike, type:p.type, expiryDate: p.expiryDate? new Date(p.expiryDate): null})}</td><td>${p.side}</td><td>${p.qty}</td><td>${fmt(p.entry)}</td><td>${ltpCell}</td><td>${pnlCell}</td><td>${p.status}</td><td><button class="btn-ghost btn" onclick="closePosition(${i},'Manual Exit','MANUAL')" ${p.status==='closed'?'disabled':''}>Close</button> <button class="btn-danger btn" onclick="removePosition(${i})">Delete</button></td></tr>`;
+  }).join('');
+  return `<div class="section-title">Portfolio</div>
+  <div class="card">
+    <div class="flexrow">
+      <select id="posRole"><option value="buyCE">BUY CE (best)</option><option value="buyPE">BUY PE (best)</option><option value="sellCE">SELL CE (best)</option><option value="sellPE">SELL PE (best)</option></select>
+      <button class="btn" onclick="addPosition()">+ Add position from Strike Selector</button>
+    </div>
+    <div class="kpi-sub" style="margin-top:6px;">Tip: you can also add a specific strike directly from the Smart Strike Selector tab's "+ Add to Portfolio" button on each card.</div>
+  </div>
+  <div class="card" style="margin-top:12px;overflow-x:auto;"><table><tr><th>Position</th><th>Side</th><th>Qty</th><th>Entry</th><th>LTP</th><th>P&amp;L</th><th>Status</th><th>Actions</th></tr>${rows||'<tr><td colspan="8" class="muted">No positions yet.</td></tr>'}</table></div>
+  <div class="kpi-sub" style="margin-top:8px;">🔵 = live Angel One LTP · 🟢 = live NSE chain · 🟠 = model-estimated. LTP/P&amp;L shown only for open positions; closed rows show the price/P&amp;L booked at Sell.</div>`;
+}
+let _tradeIdSeq = 0;
+function newTradeId(){ _tradeIdSeq++; return 'T-'+Date.now().toString(36).toUpperCase()+'-'+_tradeIdSeq.toString(36).toUpperCase(); }
+function tlog(p, event, note){ p.timeline = p.timeline||[]; p.timeline.push({ts:Date.now(), event, note:note||''}); }
+function pushTrade(o){
+  const cfg = riskCfg();
+  const p = Object.assign({
+    id:newTradeId(), status:'open', entryTs:Date.now(), qty:0, side:'BUY',
+    source:'Manual', confidence:null, reason:'', peakPct:0, trailSl:null,
+    rr: state.rrRatio, timeline:[]
+  }, o);
+  tlog(p, 'Created', `${p.source} · ${p.symbol} ${p.strike}${p.type}`);
+  tlog(p, 'Entry Executed', `${p.side} ${p.qty} @ ₹${fmt(p.entry)}`);
+  state.portfolio.push(p);
+  return p;
+}
+function addPositionForRole(role){
+  const sym = state.symbol;
+  const cached = strikeSelectorCache[sym];
+  const best = cached ? cached.best[role] : bestStrikes(sym, ensureLive(sym).spot)[role];
+  const type = role.includes('CE')?'CE':'PE'; const side = role.startsWith('buy')?'BUY':'SELL';
+  pushTrade({symbol:sym, strike:best.strike, type, side, qty:best.plan.qty, entry:best.premium,
+    sl:best.plan.sl, t1:best.plan.t1, t2:best.plan.t2, rr:best.plan.rr,
+    expiryLabel: best.expiryInfo.label, expiryDate: best.expiryInfo.date.getTime(), isLiveEntry: best.isLive,
+    source:'Smart Strike Selector', confidence: best.confidence, reason: best.reasons.join(' · ')});
+  saveState(); state.activeTab='sandbox'; buildNav(); renderActive();
+}
+function addPosition(){ addPositionForRole(document.getElementById('posRole').value); }
+function addStrategyToSandbox(key, confidence){
+  const sym = state.symbol; const spot = ensureLive(sym).spot; const cfg = SYMBOLS[sym];
+  const exp = getActiveExpiry(sym); const chain = chainFor(sym, spot, exp);
+  const legs = STRATEGIES[key](spot, cfg.step, chain.expiryDays/365);
+  const gid = 'G-'+Date.now().toString(36).toUpperCase();
+  const rec = recommendStrategies(sym).find(r=>r.key===key);
+  legs.forEach(l=>{
+    const K = Math.round(l.K/cfg.step)*cfg.step;
+    const row = chain.rows.reduce((a,b)=>Math.abs(b.K-K)<Math.abs(a.K-K)?b:a);
+    const opt = l.type==='CE'? row.ce : row.pe;
+    const side = l.side>0? 'BUY':'SELL';
+    const plan = tradePlan(opt.price, l.side>0, chain.lot, state.capital, state.riskPct, state.stopMultiplier, state.rrRatio);
+    pushTrade({symbol:sym, strike:row.K, type:l.type, side, qty:chain.lot*l.qty, entry:opt.price,
+      sl:plan.sl, t1:plan.t1, t2:plan.t2, rr:plan.rr,
+      expiryLabel: chain.expiryInfo.label, expiryDate: chain.expiryInfo.date.getTime(), isLiveEntry: row.liveRow,
+      source:'Strategy Builder', groupId:gid, groupName:STRATEGY_NAMES[key],
+      confidence: confidence!=null? confidence : (rec? rec.confidence : null),
+      reason: rec? rec.reasons.join(' · ') : STRATEGY_NAMES[key]});
+  });
+  saveState(); state.activeTab='sandbox'; buildNav(); renderActive();
+}
+function closeGroup(gid){
+  state.portfolio.forEach((p,i)=>{ if(p.groupId===gid && p.status==='open') closePosition(i,'Strategy Exit','MANUAL', true); });
+  saveState(); renderActive();
+}
+/* ---- AUTO SELL ENGINE ---- */
+/* Regime-based exit filters (VWAP/PCR/Delta/Gamma/S-R) reuse the same
+   conditions the Strike Selector uses to *qualify* an entry in the first
+   place. A position can legitimately already sit on the "losing" side of
+   one of these the instant it is opened — e.g. one leg of a straddle is
+   always going to be below/above VWAP, or a strike chosen for its OI/score
+   profile can still be on the wrong side of the gamma wall — so those
+   checks must only fire once the regime has had a real chance to move
+   *after* entry, not on the very first tick after adding the position.
+   Without this grace period, freshly-added strikes get auto-squared-off
+   almost immediately at ~₹0 P&L whenever Auto Sell is on, which looks like
+   "P&L never shows up" in Portfolio/Sandbox. */
+const ENTRY_GRACE_MS = 3*60*1000; // 3 minutes / a few refresh ticks
+function exitCheck(p){
+  const cfg = riskCfg();
+  const price = currentOptPrice(p);
+  const isBuy = p.side==='BUY';
+  const pct = p.entry? (isBuy? (price-p.entry)/p.entry*100 : (p.entry-price)/p.entry*100) : 0;
+  if(pct > (p.peakPct||0)){ p.peakPct = pct; if(pct>=cfg.trailPct){ p.trailSl = isBuy? p.entry*(1+(pct-cfg.trailPct)/100) : p.entry*(1-(pct-cfg.trailPct)/100); } }
+  const intel = chainIntel(p.symbol);
+  const bullish = p.type==='CE' ? isBuy : !isBuy;   // position wants the index up?
+  if(pct >= cfg.targetPct) return {reason:'Premium Target Hit', pct};
+  if(isBuy && price>=p.t2) return {reason:'Profit Target Reached', pct};
+  if(pct <= -cfg.slPct) return {reason:'Stop Loss Hit', pct};
+  if(isBuy && price<=p.sl) return {reason:'Max Loss Reached', pct};
+  if(p.trailSl!=null && ((isBuy && price<=p.trailSl) || (!isBuy && price>=p.trailSl))) return {reason:'Trailing SL Hit', pct};
+  const daysLeft = p.expiryDate? Math.round((p.expiryDate - Date.now())/86400000) : null;
+  const [hh,mm] = String(cfg.expiryCutoff||'15:15').split(':').map(Number);
+  const now = new Date();
+  if(daysLeft!=null && daysLeft<=0 && (now.getHours()*60+now.getMinutes()) >= (hh*60+mm)) return {reason:'Expiry Rule — auto square-off', pct};
+  if(daysLeft!=null && daysLeft<0) return {reason:'Time Exit — contract expired', pct};
+  if(Date.now() - (p.entryTs||0) < ENTRY_GRACE_MS) return null; // still inside the entry grace window — P&L-based rules above still apply, regime filters below do not
+  const spot = intel.spot;
+  if(bullish && spot < intel.t.vwap*0.998) return {reason:'VWAP Breakdown', pct};
+  if(!bullish && spot > intel.t.vwap*1.002) return {reason:'VWAP Reclaim', pct};
+  if(bullish && intel.pcr < 0.85) return {reason:'PCR Reversal', pct};
+  if(!bullish && intel.pcr > 1.15) return {reason:'PCR Reversal', pct};
+  const row = intel.chain.rows.reduce((a,b)=>Math.abs(b.K-p.strike)<Math.abs(a.K-p.strike)?b:a);
+  const opt = p.type==='CE'? row.ce : row.pe;
+  if(isBuy && opt.oiChg < 0 && pct < 0) return {reason:'OI Reversal — long unwinding', pct};
+  if(isBuy && Math.abs(opt.delta) < 0.18) return {reason:'Delta Drops below 0.18', pct};
+  if(intel.gammaFlipK && ((bullish && spot < intel.gammaFlipK) || (!bullish && spot > intel.gammaFlipK))) return {reason:'Gamma Flip against position', pct};
+  if(bullish && intel.t.superTrend.dir===-1 && pct<0) return {reason:'Trend Change', pct};
+  if(!bullish && intel.t.superTrend.dir===1 && pct<0) return {reason:'Trend Change', pct};
+  if(bullish && spot < intel.supportZone) return {reason:'Support Break', pct};
+  if(!bullish && spot > intel.resistanceZone) return {reason:'Resistance Break', pct};
+  return null;
+}
+let _autoSellBusy = false;
+function autoSellTick(){
+  const cfg = riskCfg();
+  if(!cfg.autoSell || _autoSellBusy) return;
+  _autoSellBusy = true;
+  try{
+    const dayPnl = todaysRealized()+openUnrealized();
+    let changed = false;
+    if(dayPnl <= -Math.abs(cfg.maxDailyLoss) || dayPnl >= Math.abs(cfg.maxDailyProfit)){
+      const why = dayPnl<0? 'Max Daily Loss Reached' : 'Daily Profit Target Reached';
+      state.portfolio.forEach((p,i)=>{ if(p.status==='open'){ closePosition(i, why, 'AUTO', true); changed=true; } });
+    } else {
+      state.portfolio.forEach((p,i)=>{
+        if(p.status!=='open') return;
+        const r = exitCheck(p);
+        if(r){ closePosition(i, r.reason, 'AUTO', true); changed=true; }
+      });
+    }
+    if(changed){ saveState(); if(state.activeTab==='sandbox'||state.activeTab==='portfolio') renderActive(); }
+  } finally { _autoSellBusy = false; }
+}
+function closePosition(i, reason, mode, silent){
+  const p = state.portfolio[i];
+  if(!p || p.status==='closed') return;
+  const exitPrice = currentOptPrice(p);
+  p.exitPrice = exitPrice;
+  p.exitDate = Date.now();
+  p.realizedPnl = positionPnl(p, exitPrice);
+  p.exitReason = reason || 'Manual Exit';
+  p.exitMode = mode || 'MANUAL';
+  p.status='closed';
+  tlog(p, (mode==='AUTO'?'Auto Exit':'Manual Sell'), `${p.exitReason} @ ₹${fmt(exitPrice)} · P&L ₹${fmtInt(p.realizedPnl)}`);
+  if(!silent){ saveState(); renderActive(); }
+}
+function removePosition(i){ state.portfolio.splice(i,1); saveState(); renderActive(); }
+function clearTradeHistory(sym){
+  if(!window.confirm(`Clear all open and closed ${SYMBOLS[sym].name} trades and retained P&L?`)) return;
+  state.portfolio = state.portfolio.filter(p=>p.symbol!==sym);
+  saveState(); renderActive();
+}
+function resetAllTradeHistory(){
+  if(!window.confirm('Reset all trades and retained P&L for every index?')) return;
+  state.portfolio = [];
+  Object.keys(angelPosLtpCache).forEach(k=>delete angelPosLtpCache[k]);
+  saveState(); renderActive();
+}
+
+function renderBacktest(){
+  const sym = state.symbol;
+  const bt = state._btCache && state._btCacheSym===sym ? state._btCache : (state._btCache = backtest(sym), state._btCacheSym=sym, state._btCache);
+  const curve = bt.curve;
+  const w=760,h=180,pad=20;
+  const minY=Math.min(...curve), maxY=Math.max(...curve);
+  const path = curve.map((v,i)=>(i===0?'M':'L')+(pad+i/(curve.length-1)*(w-2*pad)).toFixed(1)+','+(h-pad-(v-minY)/((maxY-minY)||1)*(h-2*pad)).toFixed(1)).join(' ');
+  return `<div class="section-title">Backtesting — ${SYMBOLS[sym].name} (EMA9/20 cross + RSI trigger, simulated history)</div>
+  <div class="grid g4">
+    <div class="card"><h3>Win Rate</h3><div class="kpi">${bt.winRate.toFixed(1)}%</div></div>
+    <div class="card"><h3>Profit Factor</h3><div class="kpi">${isFinite(bt.profitFactor)?bt.profitFactor.toFixed(2):'∞'}</div></div>
+    <div class="card"><h3>Max Drawdown</h3><div class="kpi" style="color:var(--red)">${bt.maxDD.toFixed(1)}%</div></div>
+    <div class="card"><h3>Total Return</h3><div class="kpi" style="color:${bt.totalReturn>=0?'var(--green)':'var(--red)'}">${bt.totalReturn.toFixed(1)}%</div></div>
+  </div>
+  <div class="card" style="margin-top:12px;"><h3>Equity Curve (simulated)</h3>
+  <svg viewBox="0 0 ${w} ${h}" width="100%" style="max-width:${w}px;"><path d="${path}" fill="none" stroke="#3ea6ff" stroke-width="2"/></svg>
+  <div class="kpi-sub">${bt.trades.length} simulated trades over ~2 simulated years of daily data. Past (real or simulated) performance never guarantees future results.</div></div>`;
+}
+
+function renderAlerts(){
+  const sym=state.symbol; const spot=ensureLive(sym).spot;
+  const d = computeDecisionScore(sym, spot);
+  const chain=d.chain; const alerts=[];
+  const cfg=state.alertsConfig;
+  if(cfg.pcr && (d.pcr>1.3||d.pcr<0.7)) alerts.push(`PCR extreme at ${d.pcr.toFixed(2)} — ${d.pcr>1.3?'oversold tilt':'overbought tilt'}.`);
+  if(cfg.iv && d.ivr.rank>75) alerts.push(`IV Spike — IV Rank ${d.ivr.rank.toFixed(0)}%, premium selling conditions.`);
+  if(cfg.gamma) { const flip = gammaFlip(gammaExposureProfile(chain)); if(flip) alerts.push(`Gamma Flip level at ₹${fmtInt(flip)} — watch for volatility regime change near this strike.`); }
+  if(cfg.oi){ const maxCE=Math.max(...chain.rows.map(r=>r.ce.oiChg)); if(maxCE>chain.rows[0].ce.oi*0.15) alerts.push('OI Breakout detected on a call strike.'); }
+  if(cfg.trend && d.t.superTrend.dir!==(state._lastTrendDir||d.t.superTrend.dir)) alerts.push('Trend Change flagged by SuperTrend flip.');
+  state._lastTrendDir = d.t.superTrend.dir;
+  if(cfg.institutional && Math.abs(d.flow.fiiFut)>2500) alerts.push(`Large simulated institutional futures flow: ₹${fmtInt(d.flow.fiiFut)} Cr.`);
+  if(cfg.volume){ const maxV = Math.max(...chain.rows.map(r=>r.ce.vol+r.pe.vol)); if(maxV>chain.rows[0].ce.oi*0.3) alerts.push('Volume Spike detected near ATM strikes.'); }
+  if(d.action==='BUY CE'||d.action==='BUY PE') alerts.push(`Entry Opportunity: model favors ${d.action}.`);
+  return `<div class="section-title">Alerts — ${SYMBOLS[sym].name}</div>
+  <div class="card">${alerts.length? alerts.map(a=>`<div class="alertcard"><span>${a}</span></div>`).join('') : '<span class="muted">No active alerts right now.</span>'}</div>
+  <div class="section-title">Alert Categories</div>
+  <div class="card">${Object.keys(cfg).map(k=>`<label class="tag"><input type="checkbox" ${cfg[k]?'checked':''} onchange="toggleAlert('${k}')"> ${k}</label>`).join(' ')}</div>`;
+}
+function toggleAlert(k){ state.alertsConfig[k]=!state.alertsConfig[k]; saveState(); renderActive(); }
+
+function renderWatchlist(){
+  const rows = state.watchlist.map((w,i)=>{ const spot=ensureLive(w).spot; const chg=(spot-SYMBOLS[w].spot)/SYMBOLS[w].spot*100;
+    return `<div class="watchrow"><span>${SYMBOLS[w].name}</span><span>${fmt(spot,2)}</span><span class="${chg>=0?'chg-up':'chg-down'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span><button class="btn-danger btn" onclick="removeWatch(${i})">Remove</button></div>`; }).join('');
+  const opts = Object.keys(SYMBOLS).filter(s=>!state.watchlist.includes(s)).map(s=>`<option value="${s}">${SYMBOLS[s].name}</option>`).join('');
+  return `<div class="section-title">Watchlist</div>
+  <div class="card"><div class="flexrow"><select id="watchAdd">${opts||'<option>All added</option>'}</select><button class="btn" onclick="addWatch()">+ Add</button></div></div>
+  <div class="card" style="margin-top:12px;">${rows||'<div class="muted">Watchlist empty.</div>'}</div>`;
+}
+function addWatch(){ const v=document.getElementById('watchAdd').value; if(v && !state.watchlist.includes(v)){ state.watchlist.push(v); saveState(); renderActive(); } }
+function removeWatch(i){ state.watchlist.splice(i,1); saveState(); renderActive(); }
+
+function renderSettings(){
+  const a = angelSession;
+  const statusColor = a.status==='connected'?'var(--green)': a.status==='connecting'?'var(--amber)': a.status==='error'?'var(--red)':'var(--muted)';
+  return `<div class="section-title">Settings</div>
+  <div class="card grid g2">
+    <div><label class="muted">Trading Capital (₹)</label><br><input id="setCapital" type="number" value="${state.capital}"></div>
+    <div><label class="muted">Risk per trade (%)</label><br><input id="setRisk" type="number" step="0.1" value="${state.riskPct}"></div>
+    <div><label class="muted">Stop-loss (% of premium)</label><br><input id="setStop" type="number" value="${state.stopMultiplier}"></div>
+    <div><label class="muted">Reward:Risk ratio</label><br><input id="setRR" type="number" step="0.1" value="${state.rrRatio}"></div>
+    <div><label class="muted">Auto-refresh (seconds)</label><br><input id="setRefresh" type="number" value="${state.refreshSec}"></div>
+  </div>
+  ${renderRiskSettings()}
+  <button class="btn" style="margin-top:12px;" onclick="saveSettings()">Save Settings</button>
+
+  <div class="card" style="margin-top:16px;">
+    <h3>Angel One SmartAPI (optional live broker feed)</h3>
+    <div class="kpi-sub">Connects to your own Angel One trading account to pull real broker LTP for the strikes shown in the Smart Strike Selector. Requires SmartAPI enabled on your account (<a href="https://smartapi.angelone.in/" target="_blank" style="color:var(--teal);">smartapi.angelone.in</a>) and TOTP set up (<a href="https://smartapi.angelone.in/enable-totp" target="_blank" style="color:var(--teal);">enable-totp</a>).</div>
+    <div class="grid g2" style="margin-top:10px;">
+      <div><label class="muted">API Key</label><br><input id="angelApiKey" type="text" placeholder="from SmartAPI app" value="${state.angelApiKey||''}"></div>
+      <div><label class="muted">Client Code</label><br><input id="angelClientCode" type="text" placeholder="e.g. A123456" value="${state.angelClientCode||''}"></div>
+      <div><label class="muted">MPIN / Password</label><br><input id="angelMpin" type="password" placeholder="not saved between sessions" autocomplete="off"></div>
+      <div><label class="muted">TOTP Secret (base32)</label><br><input id="angelTotpSecret" type="password" placeholder="from the TOTP QR setup" autocomplete="off"></div>
+    </div>
+    <div class="kpi-sub" style="margin-top:8px;">⚠ MPIN and TOTP secret are kept in memory only for this browser tab — they are <b>not</b> saved to localStorage and you'll need to re-enter them after a page reload. API Key and Client Code are saved locally so you don't have to retype those.</div>
+    <div class="flexrow" style="margin-top:10px;">
+      <button class="btn" onclick="connectAngelOne()">${a.status==='connected'?'Reconnect':'Connect'}</button>
+      ${a.status==='connected'? '<button class="btn-ghost btn" onclick="angelDisconnect(); renderActive();">Disconnect</button>' : ''}
+      <label class="flexrow" style="gap:6px;"><input id="angelEnabled" type="checkbox" ${state.angelEnabled?'checked':''} onchange="state.angelEnabled=this.checked; saveState(); renderActive();"> Use Angel One prices when connected</label>
+    </div>
+    <div class="kpi-sub" style="margin-top:8px;">Status: <b style="color:${statusColor}">${a.status.toUpperCase()}</b>${a.clientcode? ' · '+a.clientcode:''}${a.lastError? ' · '+a.lastError:''}</div>
+  </div>
+
+  <div class="card" style="margin-top:16px;"><h3>About &amp; Data Sources</h3><div class="kpi-sub">
+    Spot prices and 1-year daily OHLC history are pulled live from Yahoo Finance (via a public CORS proxy chain — no backend server involved), so all technical indicators run on real price data. India VIX is fetched the same way and blended with each index's own realized volatility to estimate ATM IV.<br><br>
+    The option chain tries the live NSE option-chain API first (OI/Volume/LTP badged 🟢 when it comes through); NSE frequently blocks non-browser/proxy traffic, so when that fails the chain falls back to Black-Scholes prices computed from the real spot and real IV estimate, with OI/Volume model-estimated (badged 🟠). If you connect Angel One SmartAPI, the Strike Selector's 4 recommended strikes get overlaid with your broker's real LTP (badged 🔵), since SmartAPI is directly browser-callable and doesn't need a proxy.<br><br>
+    FII/DII flow and sector rotation remain simulated — NSE/NSDL publish these once daily and reliably scraping them needs a server-side job, not a browser fetch. No recommendation here is a guarantee of profit.
+  </div></div>`;
+}
+async function connectAngelOne(){
+  const apiKey = document.getElementById('angelApiKey').value.trim();
+  const clientcode = document.getElementById('angelClientCode').value.trim();
+  const mpin = document.getElementById('angelMpin').value.trim();
+  const totpSecret = document.getElementById('angelTotpSecret').value.trim();
+  if(!apiKey || !clientcode || !mpin || !totpSecret){ angelSession.status='error'; angelSession.lastError='Fill in API Key, Client Code, MPIN and TOTP secret first.'; renderActive(); return; }
+  state.angelApiKey = apiKey; state.angelClientCode = clientcode; state.angelEnabled = true; saveState();
+  renderActive(); // show "connecting…" immediately
+  await angelLogin(clientcode, mpin, totpSecret, apiKey);
+  renderActive();
+}
+function saveRiskField(k, v){ const n = parseFloat(v); state.risk = {...riskCfg(), [k]: isNaN(n)? v : n}; saveState(); }
+function renderRiskSettings(){
+  const c = riskCfg();
+  return `<div class="card" style="margin-top:16px;">
+    <div class="flexrow"><h3 style="margin:0;">Risk &amp; Auto-Management</h3>
+      <label class="flexrow" style="gap:6px;"><input type="checkbox" ${c.autoSell?'checked':''} onchange="toggleAutoSell(this.checked)"> <b style="color:${c.autoSell?'var(--green)':'var(--muted)'}">AUTO SELL ${c.autoSell?'ON':'OFF'}</b></label></div>
+    <div class="grid g4" style="margin-top:10px;">
+      <div><label class="muted">Profit target (% of premium)</label><br><input type="number" value="${c.targetPct}" onchange="saveRiskField('targetPct',this.value)"></div>
+      <div><label class="muted">Stop-loss (% of premium)</label><br><input type="number" value="${c.slPct}" onchange="saveRiskField('slPct',this.value)"></div>
+      <div><label class="muted">Trailing SL give-back (%)</label><br><input type="number" value="${c.trailPct}" onchange="saveRiskField('trailPct',this.value)"></div>
+      <div><label class="muted">Partial book #1 (%)</label><br><input type="number" value="${c.partial1}" onchange="saveRiskField('partial1',this.value)"></div>
+      <div><label class="muted">Partial book #2 (%)</label><br><input type="number" value="${c.partial2}" onchange="saveRiskField('partial2',this.value)"></div>
+      <div><label class="muted">Max daily loss (₹)</label><br><input type="number" value="${c.maxDailyLoss}" onchange="saveRiskField('maxDailyLoss',this.value)"></div>
+      <div><label class="muted">Max daily profit (₹)</label><br><input type="number" value="${c.maxDailyProfit}" onchange="saveRiskField('maxDailyProfit',this.value)"></div>
+      <div><label class="muted">Expiry square-off (HH:MM)</label><br><input type="text" value="${c.expiryCutoff}" onchange="saveRiskField('expiryCutoff',this.value)"></div>
+    </div>
+    <div class="kpi-sub" style="margin-top:8px;">Auto Sell continuously monitors every saved strike in Sandbox Trading and books an exit the moment any configured rule fires (target, SL, trailing SL, VWAP breakdown, PCR/OI reversal, delta drop, gamma flip, trend change, expiry cutoff, daily loss/profit cap). Every exit stores its reason on the trade timeline.</div>
+  </div>`;
+}
+function toggleAutoSell(v){ state.risk = {...riskCfg(), autoSell:v}; saveState(); renderActive(); }
+function saveSettings(){
+  state.capital = Number(document.getElementById('setCapital').value)||state.capital;
+  state.riskPct = Number(document.getElementById('setRisk').value)||state.riskPct;
+  state.stopMultiplier = Number(document.getElementById('setStop').value)||state.stopMultiplier;
+  state.rrRatio = Number(document.getElementById('setRR').value)||state.rrRatio;
+  state.refreshSec = Number(document.getElementById('setRefresh').value)||state.refreshSec;
+  saveState(); restartRefresh(); renderActive();
+}
+
+/* =========================== INSTITUTIONAL INTELLIGENCE CORE =========================== */
+const RISK_DEFAULTS = {targetPct:40, slPct:18, trailPct:12, partial1:30, partial2:60,
+  maxDailyLoss:10000, maxDailyProfit:20000, expiryCutoff:'15:15', autoSell:false};
+function riskCfg(){ return Object.assign({}, RISK_DEFAULTS, state.risk||{}); }
+
+/* Chain intelligence — one cached pass per symbol per 4s so heavy chain math
+   never runs more than once per render batch, however many panels need it. */
+const _intelCache = {};
+function chainIntel(sym){
+  const spot = ensureLive(sym).spot;
+  const key = sym+'|'+Math.round(spot)+'|'+Math.floor(Date.now()/4000);
+  if(_intelCache[sym] && _intelCache[sym].key===key) return _intelCache[sym].val;
+  const cfg = SYMBOLS[sym];
+  const chain = chainFor(sym, spot, getActiveExpiry(sym));
+  const t = techSnapshot(sym);
+  const pcr = pcrCalc(chain);
+  const maxPain = maxPainCalc(chain);
+  const gex = gammaExposureProfile(chain);
+  const netGex = gex.reduce((a,p)=>a+p.gex,0);
+  const gammaWall = gex.reduce((a,b)=> Math.abs(b.gex)>Math.abs(a.gex)? b:a).K;
+  const gammaFlipK = gammaFlip(gex);
+  const ivr = ivRankCalc(sym, chain.rows.find(r=>r.atm)?.iv || getATMIV(sym));
+  const maxCeOi = chain.rows.reduce((a,b)=> b.ce.oi>a.ce.oi? b:a);
+  const maxPeOi = chain.rows.reduce((a,b)=> b.pe.oi>a.pe.oi? b:a);
+  const maxCeChg = chain.rows.reduce((a,b)=> b.ce.oiChg>a.ce.oiChg? b:a);
+  const maxPeChg = chain.rows.reduce((a,b)=> b.pe.oiChg>a.pe.oiChg? b:a);
+  const maxVolRow = chain.rows.reduce((a,b)=> (b.ce.vol+b.pe.vol)>(a.ce.vol+a.pe.vol)? b:a);
+  const maxOi = Math.max(...chain.rows.map(r=>Math.max(r.ce.oi, r.pe.oi)), 1);
+  const maxVol = Math.max(...chain.rows.map(r=>Math.max(r.ce.vol, r.pe.vol)), 1);
+  const priceUp = spot >= t.vwap;
+  const rows = chain.rows.map(r=>({
+    K:r.K, atm:r.atm, iv:r.iv, ce:r.ce, pe:r.pe,
+    ceBuildup: classifyBuildup(priceUp, r.ce.oiChg>0),
+    peBuildup: classifyBuildup(!priceUp, r.pe.oiChg>0),
+    ceHeat: r.ce.oi/maxOi, peHeat: r.pe.oi/maxOi,
+    gex: gex.find(g=>g.K===r.K)?.gex || 0
+  }));
+  let bias = 'NEUTRAL';
+  let bull = 0;
+  if(pcr>1.15) bull++; if(pcr<0.85) bull--;
+  if(spot>t.vwap) bull++; else bull--;
+  if(t.superTrend.dir===1) bull++; else bull--;
+  if(spot>maxPain) bull++; else bull--;
+  if(t.ema.e20>t.ema.e50) bull++; else bull--;
+  if(bull>=2) bias='BULLISH'; else if(bull<=-2) bias='BEARISH';
+  const val = {sym, spot, step:cfg.step, chain, rows, t, pcr, maxPain, gex, netGex, gammaWall, gammaFlipK, ivr,
+    atmStrike: chain.atmStrike, callWall:maxCeOi.K, putWall:maxPeOi.K,
+    freshCallWriting:maxCeChg.K, freshPutWriting:maxPeChg.K, hotVolume:maxVolRow.K,
+    supportZone:maxPeOi.K, resistanceZone:maxCeOi.K, maxOi, maxVol, bias, biasScore:bull,
+    expiryDays: chain.expiryDays, expiryInfo: chain.expiryInfo};
+  _intelCache[sym] = {key, val};
+  return val;
+}
+
+/* 12-point institutional confirmation checklist. Entries need >= 8/12. */
+function institutionalChecks(sym, dir){
+  const I = chainIntel(sym); const t = I.t; const bull = dir==='BULL';
+  const spot = I.spot;
+  const atmRow = I.rows.find(r=>r.atm) || I.rows[0];
+  const delta = Math.abs(bull? atmRow.ce.delta : atmRow.pe.delta);
+  const avgVol = I.chain.rows.reduce((a,r)=>a+r.ce.vol+r.pe.vol,0)/I.chain.rows.length;
+  const hotVol = atmRow.ce.vol+atmRow.pe.vol;
+  const c = I.t.series[I.t.series.length-1], prev = I.t.series[I.t.series.length-2];
+  const engulf = bull ? (c.c>c.o && c.c>prev.h) : (c.c<c.o && c.c<prev.l);
+  const buildLabel = bull? atmRow.peBuildup.label : atmRow.ceBuildup.label;
+  const list = [
+    {name:'VWAP position', pass: bull? spot>t.vwap : spot<t.vwap, detail:`Spot ${fmt(spot,0)} vs VWAP ${fmt(t.vwap,0)}`},
+    {name:'CPR / Pivot alignment', pass: bull? spot>t.pivots.tc : spot<t.pivots.bc, detail:`CPR ${fmt(t.pivots.bc,0)}–${fmt(t.pivots.tc,0)}`},
+    {name:'OI build-up', pass: bull? /Long Build-up|Short Covering/.test(buildLabel) : /Short Build-up|Long Unwinding/.test(buildLabel), detail:`ATM ${bull?'PE':'CE'} shows ${buildLabel}`},
+    {name:'PCR confirmation', pass: bull? I.pcr>1.15 : I.pcr<0.85, detail:`PCR ${I.pcr.toFixed(2)} (bull >1.15 / bear <0.85)`},
+    {name:'Max Pain direction', pass: bull? spot>=I.maxPain : spot<=I.maxPain, detail:`Max Pain ${fmtInt(I.maxPain)} · distance ${((spot-I.maxPain)/spot*100).toFixed(2)}%`},
+    {name:'Delta selection', pass: delta>=0.45 && delta<=0.65, detail:`ATM ${bull?'CE':'PE'} delta ${delta.toFixed(2)} (buy zone 0.50–0.60)`},
+    {name:'IV Rank filter', pass: I.ivr.rank<70, detail:`IV Rank ${I.ivr.rank.toFixed(0)}% · percentile ${I.ivr.percentile.toFixed(0)}%`},
+    {name:'Gamma exposure', pass: bull? I.netGex>=0 : I.netGex<=0, detail:`Net GEX ${I.netGex>=0?'positive':'negative'} · wall ${fmtInt(I.gammaWall)}`},
+    {name:'Multi-timeframe trend', pass: bull? (t.ema.e9>t.ema.e20 && t.ema.e20>t.ema.e50) : (t.ema.e9<t.ema.e20 && t.ema.e20<t.ema.e50), detail:`EMA 9/20/50 stack ${t.ema.e9>t.ema.e20?'up':'down'} · ADX ${t.adx.toFixed(0)}`},
+    {name:'Volume confirmation', pass: hotVol>avgVol, detail:`ATM volume ${fmtInt(hotVol)} vs chain avg ${fmtInt(avgVol)}`},
+    {name:'Candle confirmation', pass: engulf, detail: engulf? (bull?'Bullish engulfing / breakout close':'Bearish engulfing / breakdown close') : 'No decisive candle (inside bar / indecision)'},
+    {name:'S/R + VWAP confluence', pass: bull? (spot>I.supportZone && spot<I.resistanceZone*1.002) : (spot<I.resistanceZone), detail:`Put wall ${fmtInt(I.supportZone)} · Call wall ${fmtInt(I.resistanceZone)}`},
+  ];
+  return list;
+}
+
+/* ---- Multi-factor strike scoring (weights sum to 110, normalised to 100) ---- */
+const SCORE_WEIGHTS = {OI:20, 'ΔOI':15, PCR:10, Delta:10, IVR:10, VWAP:10, Trend:10, MaxPain:10, Volume:10, Gamma:5};
+function scoreStrikeV2(row, role, I){
+  const isBuy = role.startsWith('buy');
+  const isCE = role.includes('CE');
+  const opt = isCE? row.ce : row.pe;
+  const bullPos = isCE ? isBuy : !isBuy;     // does this position want the index up?
+  const absDelta = Math.abs(opt.delta);
+  const b = {};
+  const put = (k, got)=>{ b[k] = {got: Math.max(0, Math.min(SCORE_WEIGHTS[k], got)), max: SCORE_WEIGHTS[k]}; };
+  put('OI', opt.oi/I.maxOi*20);
+  const chgRatio = opt.oi? opt.oiChg/opt.oi : 0;
+  put('ΔOI', isBuy ? 7.5 + chgRatio*60 : 7.5 + Math.abs(chgRatio)*45);
+  put('PCR', bullPos ? (I.pcr-0.85)/0.5*10 : (1.15-I.pcr)/0.5*10);
+  const target = isBuy? 0.55 : 0.20;
+  put('Delta', 10 - Math.abs(absDelta-target)*40);
+  put('IVR', isBuy ? (100-I.ivr.rank)/10 : I.ivr.rank/10);
+  const aboveVwap = I.spot>=I.t.vwap;
+  put('VWAP', (bullPos===aboveVwap) ? 10 : 2);
+  const trendUp = I.t.superTrend.dir===1 && I.t.ema.e9>I.t.ema.e20;
+  put('Trend', (bullPos===trendUp) ? 10 : 2);
+  const mpDist = Math.abs(row.K - I.maxPain)/I.spot;
+  put('MaxPain', isBuy ? (bullPos === (row.K<=I.maxPain) ? 10 : 4) : Math.max(0, 10-mpDist*400));
+  put('Volume', opt.vol/I.maxVol*10);
+  const gammaOk = Math.abs(row.K - I.gammaWall) <= I.step*2;
+  put('Gamma', isBuy ? (gammaOk?5:2) : (gammaOk?2:5));
+  const raw = Object.values(b).reduce((a,v)=>a+v.got,0);
+  const score = Math.max(0, Math.min(100, raw/1.10));
+  const tags = [];
+  if(row.K===I.callWall) tags.push('Call OI Wall');
+  if(row.K===I.putWall) tags.push('Put OI Wall');
+  if(row.K===I.hotVolume) tags.push('Highest Volume');
+  if(row.K===I.freshCallWriting && !isCE===false) tags.push('Fresh CE Writing');
+  if(row.K===I.freshPutWriting && !isCE) tags.push('Fresh PE Writing');
+  if(gammaOk) tags.push('Gamma Wall');
+  if(row.atm) tags.push('ATM');
+  else if(isCE? row.K<I.spot : row.K>I.spot) tags.push('Slight ITM'); else tags.push('Slight OTM');
+  if(Math.abs(opt.theta) === Math.min(...I.rows.map(r=>Math.abs((isCE?r.ce:r.pe).theta)))) tags.push('Lowest Theta');
+  return {score, breakdown:b, tags};
+}
+function bestStrikes(sym, spot){
+  const I = chainIntel(sym);
+  const chain = I.chain;
+  const roles = ['buyCE','buyPE','sellCE','sellPE'];
+  const out = {};
+  roles.forEach(role=>{
+    let best=null, bestSc=null;
+    I.rows.forEach(row=>{
+      const sc = scoreStrikeV2(row, role, I);
+      if(!bestSc || sc.score>bestSc.score){ bestSc = sc; best = row; }
+    });
+    const opt = role.includes('CE')? best.ce : best.pe;
+    const isBuy = role.startsWith('buy');
+    const plan = tradePlan(opt.price, isBuy, chain.lot, state.capital, state.riskPct, state.stopMultiplier, state.rrRatio);
+    const reasons = [];
+    reasons.push(`OI ${fmtInt(opt.oi)} (${(opt.oi/I.maxOi*100).toFixed(0)}% of chain max)`);
+    reasons.push(`${opt.oiChg>=0?'+':''}${fmtInt(opt.oiChg)} OI change — ${(role.includes('CE')? best.ceBuildup : best.peBuildup).label}`);
+    reasons.push(`PCR ${I.pcr.toFixed(2)}`);
+    reasons.push(`Delta ${opt.delta.toFixed(2)}`);
+    reasons.push(`IV Rank ${I.ivr.rank.toFixed(0)}%`);
+    reasons.push(`Spot ${I.spot>=I.t.vwap?'above':'below'} VWAP`);
+    reasons.push(`Max Pain ${fmtInt(I.maxPain)}`);
+    out[role] = {strike:best.K, premium:opt.price, delta:opt.delta, theta:opt.theta, oi:opt.oi, vol:opt.vol,
+      score: bestSc.score, breakdown: bestSc.breakdown, tags: bestSc.tags, reasons,
+      confidence: Math.max(30, Math.min(98, 45 + bestSc.score*0.55)),
+      probITM: Math.round(Math.abs(opt.delta)*100),
+      riskScore: Math.round(Math.abs(opt.theta)*8 + (isBuy? (100-Math.abs(opt.delta)*100)*0.2 : 0)),
+      isLive: best.liveRow, expiryInfo: chain.expiryInfo, symbol: sym, plan};
+  });
+  return out;
+}
+
+/* ---- Auto strategy generator: Strategy Builder only ---- */
+function strategyTimeframeScores(t){
+  const c=closes(t.series), n=c.length, ret=k=>n>k?(c[n-1]/c[n-1-k]-1)*100:0;
+  const slope=(a,b)=>a>b?1:a<b?-1:0;
+  return {
+    m5:  50+20*slope(t.close,t.vwap)+15*slope(t.ema.e9,t.ema.e20)+Math.max(-15,Math.min(15,ret(1)*8)),
+    m15: 50+20*slope(t.ema.e9,t.ema.e20)+15*slope(t.macd.hist,0)+Math.max(-15,Math.min(15,ret(3)*4)),
+    h1:  50+20*slope(t.ema.e20,t.ema.e50)+15*slope(t.superTrend.dir,0)+Math.max(-15,Math.min(15,ret(5)*3)),
+    day: 50+20*slope(t.ema.e50,t.ema.e200)+15*slope(t.pdi,t.mdi)+Math.max(-15,Math.min(15,ret(20)))
+  };
+}
+function candleRead(series){
+  const a=series[series.length-1], b=series[series.length-2];
+  const body=Math.abs(a.c-a.o), range=Math.max(.01,a.h-a.l), upper=a.h-Math.max(a.c,a.o), lower=Math.min(a.c,a.o)-a.l;
+  if(a.c>b.h) return {label:'Bullish breakout candle',dir:1};
+  if(a.c<b.l) return {label:'Bearish breakdown candle',dir:-1};
+  if(lower>body*2 && upper<body) return {label:'Hammer rejection',dir:1};
+  if(upper>body*2 && lower<body) return {label:'Shooting-star rejection',dir:-1};
+  if(body/range<.22) return {label:'Doji / indecision',dir:0};
+  return {label:a.c>a.o?'Bullish price action':'Bearish price action',dir:a.c>a.o?1:-1};
+}
+function strategyPayoffStats(key,I){
+  const legs=STRATEGIES[key](I.spot,I.step,I.expiryDays/365).map(l=>({...l,K:Math.round(l.K/I.step)*I.step}));
+  const curve=payoffCurve(legs,I.spot,getATMIV(I.sym),I.expiryDays/365,.18);
+  const ys=curve.ys, xs=curve.xs, mx=Math.max(...ys), mn=Math.min(...ys);
+  const bes=[]; for(let i=1;i<ys.length;i++) if((ys[i-1]<=0&&ys[i]>=0)||(ys[i-1]>=0&&ys[i]<=0)) bes.push(xs[i]);
+  const limitedProfit=mx<Math.max(Math.abs(ys[0]),Math.abs(ys[ys.length-1]))*.98;
+  const limitedLoss=Math.abs(mn)<Math.max(Math.abs(ys[0]),Math.abs(ys[ys.length-1]))*.98;
+  const rr=Math.abs(mn)>0?mx/Math.abs(mn):99;
+  return {legs,curve,maxProfit:mx,maxLoss:Math.abs(mn),maxProfitText:limitedProfit?'₹'+fmtInt(mx):'Variable',maxLossText:limitedLoss?'₹'+fmtInt(Math.abs(mn)):'Potentially large',rrText:isFinite(rr)?rr.toFixed(2):'—',breakevenText:bes.length?bes.slice(0,2).map(fmtInt).join(' / '):'Path-dependent'};
+}
+function institutionalStrategyEngine(sym){
+  const I=chainIntel(sym), t=I.t, tf=strategyTimeframeScores(t), candle=candleRead(t.series);
+  const chain=I.chain, atm=chain.rows.find(r=>r.atm)||chain.rows[0], ivNow=atm.iv, hv=realizedVolPct(sym,20)||ivNow;
+  const expectedMove=I.spot*(ivNow/100)*Math.sqrt(Math.max(1,I.expiryDays)/365);
+  const avgVol=chain.rows.reduce((a,r)=>a+r.ce.vol+r.pe.vol,0)/chain.rows.length;
+  const relVol=(atm.ce.vol+atm.pe.vol)/(avgVol||1);
+  const callDoi=chain.rows.reduce((a,r)=>a+r.ce.oiChg,0), putDoi=chain.rows.reduce((a,r)=>a+r.pe.oiChg,0);
+  const directional=(tf.m5+tf.m15+tf.h1+tf.day)/4;
+  const bullEvidence=(directional-50)/10+(I.pcr-1)*4+(I.spot>t.vwap?1:-1)+(I.spot>t.pivots.piv?1:-1)+candle.dir;
+  const trendStrong=t.adx>=24 && Math.abs(directional-50)>=10;
+  const breakout=I.spot>Math.max(t.swing.resistance,t.pivots.r1) || (candle.dir>0&&relVol>1.25);
+  const breakdown=I.spot<Math.min(t.swing.support,t.pivots.s1) || (candle.dir<0&&relVol>1.25);
+  const expiryDay=I.expiryDays<=1;
+  const highVol=I.ivr.rank>=65 || ivNow>hv*1.2;
+  const lowVol=I.ivr.rank<=30 || ivNow<hv*.85;
+  const eventVol=relVol>1.8 && Math.abs(ivNow-hv)>3;
+  let regime='Sideways Market';
+  if(expiryDay) regime='Expiry Day'; else if(eventVol) regime='Event-Driven Volatility'; else if(breakout) regime='Breakout'; else if(breakdown) regime='Breakdown'; else if(trendStrong&&bullEvidence>0) regime='Strong Bull Trend'; else if(trendStrong&&bullEvidence<0) regime='Strong Bear Trend'; else if(highVol) regime='High Volatility'; else if(lowVol) regime='Low Volatility';
+  const sentiment=regime.includes('Bull')||regime==='Breakout'?'Bullish':regime.includes('Bear')||regime==='Breakdown'?'Bearish':highVol||eventVol?'Highly Volatile':'Neutral';
+  const isIntraday=expiryDay||regime==='Breakout'||regime==='Breakdown'||Math.abs(directional-50)>18;
+  const catalog={
+    'Strong Bull Trend':['bull_call_spread','long_call','bull_put_spread','diagonal_spread'],
+    'Strong Bear Trend':['bear_put_spread','long_put','bear_call_spread','reverse_iron_condor'],
+    'Sideways Market':['iron_condor','iron_fly','butterfly','short_strangle'],
+    'Low Volatility':['long_straddle','long_strangle','bull_call_spread','bear_put_spread'],
+    'High Volatility':['iron_condor','iron_fly','bull_put_spread','bear_call_spread'],
+    'Breakout':[bullEvidence>=0?'long_call':'long_put','long_straddle','long_strangle','scalping_strategy'],
+    'Breakdown':['long_put','bear_put_spread','long_straddle','scalping_strategy'],
+    'Expiry Day':['scalping_strategy',bullEvidence>=0?'long_call':'long_put','iron_fly','butterfly'],
+    'Event-Driven Volatility':['long_straddle','long_strangle','calendar_spread','reverse_iron_condor']
+  };
+  const unique=[...new Set(catalog[regime]||catalog['Sideways Market'])];
+  const recommendations=unique.map((key,idx)=>{
+    const st=strategyPayoffStats(key,I); let score=78-idx*7;
+    if(highVol && /iron|bull_put|bear_call|jade|short/.test(key)) score+=9;
+    if(lowVol && /long_|bull_call|bear_put/.test(key)) score+=9;
+    if(isIntraday && /long_call|long_put|straddle|strangle|scalping/.test(key)) score+=5;
+    const alignment=Math.min(10,Math.abs(directional-50)/3); score+=alignment;
+    const pop=Math.max(35,Math.min(88,Math.round(50+(score-65)*.65+(key.includes('spread')||key.includes('iron')?8:0))));
+    const reasons=[`${regime}: multi-horizon scores 5m ${tf.m5.toFixed(0)}, 15m ${tf.m15.toFixed(0)}, 1H ${tf.h1.toFixed(0)}, Daily ${tf.day.toFixed(0)}; ADX ${t.adx.toFixed(1)}.`, `Spot is ${I.spot>=t.vwap?'above':'below'} VWAP ${fmtInt(t.vwap)} and ${I.spot>=t.pivots.piv?'above':'below'} pivot ${fmtInt(t.pivots.piv)}; ${candle.label.toLowerCase()}.`, `PCR ${I.pcr.toFixed(2)}, Max Pain ${fmtInt(I.maxPain)}, put/call walls ${fmtInt(I.putWall)}/${fmtInt(I.callWall)}, ΔOI puts ${fmtInt(putDoi)} vs calls ${fmtInt(callDoi)}.`, `IV ${ivNow.toFixed(1)}%, IV Rank ${I.ivr.rank.toFixed(0)}%, IV Percentile ${I.ivr.percentile.toFixed(0)}%, HV ${hv.toFixed(1)}%; expected move ±${fmtInt(expectedMove)}.`, `${STRATEGY_NAMES[key]} ranks highest for this regime with ${key.includes('spread')||key.includes('iron')?'defined/controlled risk':'convex directional exposure'} and ${I.expiryDays} DTE.`];
+    return {key,name:STRATEGY_NAMES[key],confidence:Math.max(50,Math.min(96,Math.round(score))),pop,horizon:isIntraday?'Intraday':'Weekly / Swing',riskLabel:st.maxLoss>I.spot*.05?'High':st.maxLoss>I.spot*.02?'Medium':'Controlled',...st,reasons,legsText:st.legs.map(l=>`${l.side>0?'Buy':'Sell'} ${l.K} ${l.type}${l.qty>1?' x'+l.qty:''}`).join(' · ')};
+  }).sort((a,b)=>b.confidence-a.confidence);
+  return {asOf:Date.now(),regime,sentiment,recommendations,factors:[`VWAP ${I.spot>=t.vwap?'▲':'▼'}`,`PCR ${I.pcr.toFixed(2)}`,`IVR ${I.ivr.rank.toFixed(0)}%`,`DTE ${I.expiryDays}`,`RVol ${relVol.toFixed(2)}x`,`Expected ±${fmtInt(expectedMove)}`,`Gamma wall ${fmtInt(I.gammaWall)}`]};
+}
+function recommendStrategies(sym){ return institutionalStrategyEngine(sym).recommendations; }
+/* ---- Option chain intelligence panel ---- */
+function heatColor(v, green){
+  const a = 0.08 + Math.min(0.55, v*0.6);
+  return green? `rgba(34,197,94,${a})` : `rgba(239,68,68,${a})`;
+}
+function renderChainIntel(sym){
+  const I = chainIntel(sym);
+  const near = I.rows.filter(r=>Math.abs(r.K-I.atmStrike)<=I.step*6);
+  const pcrCls = I.pcr>1.15? 'var(--green)' : I.pcr<0.85? 'var(--red)' : 'var(--amber)';
+  return `<div class="section-title">Option Chain Intelligence</div>
+  <div class="grid g4">
+    <div class="card"><h3>PCR</h3><div class="kpi" style="color:${pcrCls}">${I.pcr.toFixed(2)}</div><div class="kpi-sub">${I.pcr>1.15?'Put writing dominant — bullish':I.pcr<0.85?'Call writing dominant — bearish':'Balanced'}</div></div>
+    <div class="card"><h3>Max Pain</h3><div class="kpi">${fmtInt(I.maxPain)}</div><div class="kpi-sub">Spot ${((I.spot-I.maxPain)/I.spot*100).toFixed(2)}% ${I.spot>I.maxPain?'above':'below'} pin</div></div>
+    <div class="card"><h3>Gamma Wall</h3><div class="kpi">${fmtInt(I.gammaWall)}</div><div class="kpi-sub">Net GEX ${I.netGex>=0?'positive (mean-reverting)':'negative (trending)'}${I.gammaFlipK?` · flip ${fmtInt(I.gammaFlipK)}`:''}</div></div>
+    <div class="card"><h3>Support / Resistance</h3><div class="kpi" style="font-size:16px;">${fmtInt(I.supportZone)} / ${fmtInt(I.resistanceZone)}</div><div class="kpi-sub">Strong put wall / strong call wall</div></div>
+  </div>
+  <div class="flexrow" style="margin:10px 0;">
+    <span class="tag">Fresh CE writing: ${fmtInt(I.freshCallWriting)}</span>
+    <span class="tag">Fresh PE writing: ${fmtInt(I.freshPutWriting)}</span>
+    <span class="tag">Highest volume: ${fmtInt(I.hotVolume)}</span>
+    <span class="tag">IV Rank: ${I.ivr.rank.toFixed(0)}%</span>
+    <span class="tag">Regime: ${I.bias}</span>
+  </div>
+  <div class="card" style="overflow-x:auto;margin-bottom:12px;">
+    <table><tr><th>CE OI heat</th><th>CE build-up</th><th>CE ΔOI</th><th>Strike</th><th>PE ΔOI</th><th>PE build-up</th><th>PE OI heat</th></tr>
+    ${near.map(r=>`<tr class="${r.atm?'atm':''}">
+      <td style="background:${heatColor(r.ceHeat,false)}">${fmtInt(r.ce.oi)}</td>
+      <td><span class="pill ${r.ceBuildup.cls}">${r.ceBuildup.label}</span></td>
+      <td class="${r.ce.oiChg>=0?'chg-up':'chg-down'}">${r.ce.oiChg>=0?'+':''}${fmtInt(r.ce.oiChg)}</td>
+      <td style="text-align:center;font-weight:700;">${r.K}${r.K===I.callWall?' 🧱CE':''}${r.K===I.putWall?' 🧱PE':''}${r.K===I.gammaWall?' Γ':''}</td>
+      <td class="${r.pe.oiChg>=0?'chg-up':'chg-down'}">${r.pe.oiChg>=0?'+':''}${fmtInt(r.pe.oiChg)}</td>
+      <td><span class="pill ${r.peBuildup.cls}">${r.peBuildup.label}</span></td>
+      <td style="background:${heatColor(r.peHeat,true)}">${fmtInt(r.pe.oi)}</td></tr>`).join('')}
+    </table>
+    <div class="kpi-sub" style="margin-top:8px;">🧱 = OI wall (strongest call/put base) · Γ = gamma wall. Build-up is classified from OI change against the option's premium direction: Long Build-up, Short Build-up, Short Covering, Long Unwinding.</div>
+  </div>`;
+}
+
+/* =========================== DISPATCH =========================== */
+const DISPATCH = {
+  home: renderHome, market: renderMarket,
+  index_NIFTY: ()=>renderIndexDashboard('NIFTY'), index_BANKNIFTY: ()=>renderIndexDashboard('BANKNIFTY'),
+  chain: renderChain, strikes: renderStrikes, institutional: renderInstitutional,
+  greeks: renderGreeks, oi: renderOI, iv: renderIV, strategy: renderStrategy,
+  sandbox: renderSandbox, portfolio: renderPortfolio, backtest: renderBacktest,
+  alerts: renderAlerts, watchlist: renderWatchlist, settings: renderSettings,
+};
+
+/* =========================== UI SHELL =========================== */
+function buildNav(){
+  const nav = document.getElementById('navlist');
+  nav.innerHTML = TABS.map(([id,icon,label])=>`<li data-tab="${id}" class="${state.activeTab===id?'active':''}"><span class="icon">${icon}</span>${label}</li>`).join('');
+  nav.querySelectorAll('li').forEach(li=> li.addEventListener('click', ()=>{ state.activeTab=li.dataset.tab; saveState(); buildNav(); renderActive(); if(state.activeTab==='strikes') refreshChain(state.symbol).then(ok=>{ if(ok && state.activeTab==='strikes') renderActive(); }); }));
+}
+function buildSymbolSelector(){
+  const box = document.getElementById('symsel');
+  box.innerHTML = Object.keys(SYMBOLS).map(s=>`<button class="symbtn ${state.symbol===s?'active':''}" data-sym="${s}">${s}</button>`).join('');
+  box.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{
+    state.symbol=b.dataset.sym; saveState(); buildSymbolSelector(); renderActive();
+    if(!liveData[state.symbol].series) refreshDailySeries(state.symbol).then(renderActiveTick);
+    if(!liveData[state.symbol].chain) refreshChain(state.symbol).then(renderActiveTick);
+  }));
+}
+function renderActive(){
+  const fn = DISPATCH[state.activeTab] || renderHome;
+  document.getElementById('tabContent').innerHTML = fn();
+  updateHeaderBits();
+}
+function updateHeaderBits(){
+  const ls = ensureLive(state.symbol);
+  const prevClose = liveData[state.symbol].prevClose ?? SYMBOLS[state.symbol].spot;
+  const chg = (ls.spot - prevClose)/prevClose*100;
+  document.getElementById('spotbox').innerHTML = `${fmt(ls.spot,2)} <span class="${chg>=0?'chg-up':'chg-down'}" style="font-size:12px;">(${chg>=0?'+':''}${chg.toFixed(2)}%)</span>`;
+  updateDataBadge();
+}
+/* Used by background/periodic refreshes only (auto-refresh timer, deferred
+   fetches). Always updates the spot price/badge, but skips re-rendering the
+   tab body while on Settings — re-rendering there would blow away whatever's
+   mid-typed into the Angel One form, since MPIN/TOTP aren't saved to state
+   until "Connect" is clicked. Direct navigation (tab clicks, Save, Connect)
+   should still call renderActive() so the tab reflects the change immediately. */
+function renderActiveTick(){
+  if(state.activeTab==='settings'){ updateHeaderBits(); return; }
+  renderActive();
+}
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN',{hour12:false}) + ' IST*';
+}
+let refreshTimer=null;
+function restartRefresh(){
+  if(refreshTimer) clearInterval(refreshTimer);
+  // Floor the interval at 5s regardless of the user's setting — free CORS
+  // proxies rate-limit aggressively, and hammering them just causes every
+  // request to start failing and the terminal to fall back to simulation.
+  const intervalMs = Math.max(5, state.refreshSec)*1000;
+  refreshTimer = setInterval(()=>{
+    autoSellTick(); // continuous auto-exit monitor for every saved strike
+    liveRefreshTick(); // real quote poll for the active symbol (falls back to synthetic tick internally via ensureLive/liveTick if offline)
+    Object.keys(SYMBOLS).forEach(s=>{ if(s!==state.symbol) liveTick(s); }); // keep other tabs' seeded fallback moving too
+  }, intervalMs);
+}
+
+/* =========================== INIT =========================== */
+buildNav(); buildSymbolSelector(); renderActive();
+setInterval(tickClock,1000); tickClock();
+restartRefresh();
+initLiveData(); // kick off the real Yahoo Finance / India VIX / NSE chain fetches
+</script>
+</body>
+</html>
